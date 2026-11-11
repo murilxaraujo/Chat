@@ -238,7 +238,7 @@ struct MessageView: View {
                 if let builder = params.avatarBuilder {
                     builder(message.user)
                 } else if let url = message.user.avatarURL {
-                    AvatarImageView(url: url, avatarSize: params.avatarSize, avatarCacheKey: message.user.avatarCacheKey)
+                    AvatarImageView(url: url, avatarSize: params.avatarSize)
                         .contentShape(Circle())
                         .onTapGesture {
                             params.tapAvatarClosure?(message.user, message.id)
@@ -364,7 +364,7 @@ struct MessageView: View {
     @ViewBuilder
     var pinAvatar: some View {
         if let url = message.user.avatarURL {
-            AvatarImageView(url: url, avatarSize: 38, avatarCacheKey: message.user.avatarCacheKey)
+            AvatarImageView(url: url, avatarSize: 38)
         } else {
             AvatarNameView(name: message.user.name, avatarSize: 38)
                 .background(theme.colors.mainTint)

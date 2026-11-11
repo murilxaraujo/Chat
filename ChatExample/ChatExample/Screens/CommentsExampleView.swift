@@ -119,15 +119,20 @@ struct CommentsExampleView: View {
         let message = params.message
         VStack {
             HStack(alignment: .top, spacing: 12) {
-                CachedAsyncImage(
-                    url: message.user.avatarURL,
-                    cacheKey: message.user.avatarCacheKey
-                ) { image in
-                    image
+                if let url = message.user.avatarURL, url.scheme == "asset", let name = url.host {
+                    Image(name)
                         .resizable()
                         .scaledToFill()
-                } placeholder: {
-                    Rectangle().fill(Color.gray)
+                } else {
+                    AsyncImage(url: message.user.avatarURL) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Rectangle().fill(Color.gray)
+                        }
+                    }
                 }
                 .frame(width: 40, height: 40)
                 .clipShape(Circle())

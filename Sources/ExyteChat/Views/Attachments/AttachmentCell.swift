@@ -198,37 +198,15 @@ struct AsyncImageView: View {
     let attachment: Attachment
     let size: CGSize
 
-    private var animatedURL: (url: URL, cacheKey: String?)? {
-        if attachment.thumbnail.isGIF {
-            return (attachment.thumbnail, attachment.thumbnailCacheKey)
-        } else if attachment.full.isGIF {
-            return (attachment.full, attachment.fullCacheKey)
-        }
-        return nil
-    }
-
     var body: some View {
-        if let animatedURL {
-            CachedAnimatedImage(
-                url: animatedURL.url,
-                cacheKey: animatedURL.cacheKey,
-                contentMode: .fill
-            ) {
-                placeholder
-            }
-            .frame(width: size.width, height: size.height)
-            .clipped()
-        } else {
-            CachedAsyncImage(
-                url: attachment.thumbnail,
-                cacheKey: attachment.thumbnailCacheKey
-            ) { imageView in
-                imageView
+        ChatAsyncImage(url: attachment.thumbnail) { phase in
+            if let image = phase.image {
+                image
                     .resizable()
                     .scaledToFill()
                     .frame(width: size.width, height: size.height)
                     .clipped()
-            } placeholder: {
+            } else {
                 placeholder
             }
         }

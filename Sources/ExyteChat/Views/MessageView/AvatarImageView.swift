@@ -8,15 +8,16 @@ struct AvatarImageView: View {
 
     let url: URL?
     let avatarSize: CGFloat
-    var avatarCacheKey: String? = nil
 
     var body: some View {
-        CachedAsyncImage(url: url, cacheKey: avatarCacheKey) { image in
-            image
-                .resizable()
-                .scaledToFill()
-        } placeholder: {
-            Rectangle().fill(Color.gray)
+        ChatAsyncImage(url: url) { phase in
+            if let image = phase.image {
+                image
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Rectangle().fill(Color.gray)
+            }
         }
         .viewSize(avatarSize)
         .clipShape(Circle())

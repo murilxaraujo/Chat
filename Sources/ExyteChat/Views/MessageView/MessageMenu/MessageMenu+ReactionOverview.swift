@@ -85,7 +85,7 @@ struct ReactionOverview: View {
     @ViewBuilder
      func avatarView(_ user: User) -> some View {
          if let url = user.avatarURL {
-             AvatarImageView(url: user.avatarURL, avatarSize: 32, avatarCacheKey: user.avatarCacheKey)
+             AvatarImageView(url: user.avatarURL, avatarSize: 32)
                  .contentShape(Circle())
                  .overlay(
                      Circle()

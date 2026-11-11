@@ -61,9 +61,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
     public let full: URL
     public let fullUploadStatus: UploadStatus?
     public let type: AttachmentType
-    public let thumbnailCacheKey: String?
-    public let fullCacheKey: String?
-    
     /// Used for .document attachments
     public let fileName: String?
     public let fileSize: Int?
@@ -73,8 +70,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
         thumbnail: URL,
         full: URL,
         type: AttachmentType,
-        thumbnailCacheKey: String? = nil,
-        fullCacheKey: String? = nil,
         fullUploadStatus: UploadStatus? = nil,
         fileName: String? = nil,
         fileSize: Int? = nil
@@ -83,8 +78,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
         self.thumbnail = thumbnail
         self.full = full
         self.type = type
-        self.thumbnailCacheKey = thumbnailCacheKey
-        self.fullCacheKey = fullCacheKey
         self.fullUploadStatus = fullUploadStatus
         self.fileName = fileName
         self.fileSize = fileSize
@@ -94,7 +87,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
         id: String,
         url: URL,
         type: AttachmentType,
-        cacheKey: String? = nil,
         fileName: String? = nil,
         fileSize: Int? = nil
     ) {
@@ -103,8 +95,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
             thumbnail: url,
             full: url,
             type: type,
-            thumbnailCacheKey: cacheKey,
-            fullCacheKey: cacheKey,
             fileName: fileName,
             fileSize: fileSize
         )
@@ -116,8 +106,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
         full: URL? = nil,
         fullUploadStatus: UploadStatus? = nil,
         type: AttachmentType? = nil,
-        thumbnailCacheKey: String? = nil,
-        fullCacheKey: String? = nil,
         fileName: String? = nil,
         fileSize: Int? = nil
     ) -> Attachment {
@@ -126,8 +114,6 @@ public struct Attachment: Codable, Identifiable, Hashable, Sendable {
             thumbnail: thumbnail ?? self.thumbnail,
             full: full ?? self.full,
             type: type ?? self.type,
-            thumbnailCacheKey: thumbnailCacheKey ?? self.thumbnailCacheKey,
-            fullCacheKey: fullCacheKey ?? self.fullCacheKey,
             fullUploadStatus: fullUploadStatus ?? self.fullUploadStatus,
             fileName: fileName ?? self.fileName,
             fileSize: fileSize ?? self.fileSize

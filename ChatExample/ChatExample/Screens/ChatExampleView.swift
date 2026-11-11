@@ -161,14 +161,19 @@ struct ChatExampleView: View {
         ToolbarItem(placement: .principal) {
             HStack {
                 if let url = steve.avatarURL {
-                    CachedAsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        default:
-                            Rectangle().fill(Color(hex: "AFB3B8"))
+                    if url.scheme == "asset", let name = url.host {
+                        Image(name)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Rectangle().fill(Color(hex: "AFB3B8"))
+                            }
                         }
                     }
                     .frame(width: 35, height: 35)
