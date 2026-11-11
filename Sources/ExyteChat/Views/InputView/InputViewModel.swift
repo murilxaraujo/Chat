@@ -4,8 +4,9 @@
 
 import Foundation
 import Combine
-import ExyteMediaPicker
 import SwiftUI
+import PhotosUI
+import AVFoundation
 
 @MainActor
 final class InputViewModel: ObservableObject {
@@ -14,11 +15,13 @@ final class InputViewModel: ObservableObject {
     @Published var attachments = InputViewAttachments()
     @Published var state: InputViewState = .empty
 
-    @Published var showMediaPicker = false
+    @Published var showPhotoPicker = false
+    @Published var showCameraPicker = false
+    @Published var showCameraUnavailableAlert = false
     @Published var showDocumentPicker = false
     @Published var showLocationPicker = false
-
-    @Published var mediaPickerMode = MediaPickerMode.photos
+    @Published var selectedPhotoItems: [PhotosPickerItem] = []
+    @Published var isImportingMedia = false
 
     @Published var showActivityIndicator = false
 
@@ -28,6 +31,7 @@ final class InputViewModel: ObservableObject {
     private var recorder = Recorder()
 
     private var saveEditingClosure: ((String) -> Void)?
+    private var mediaImportGeneration = 0
 
     private var recordPlayerSubscription: AnyCancellable?
     private var subscriptions = Set<AnyCancellable>()
@@ -50,7 +54,11 @@ final class InputViewModel: ObservableObject {
         text = ""
         attachments = InputViewAttachments()
         state = .empty
-        showMediaPicker = false
+        showPhotoPicker = false
+        showCameraPicker = false
+        selectedPhotoItems = []
+        mediaImportGeneration += 1
+        isImportingMedia = false
         showDocumentPicker = false
         showLocationPicker = false
         saveEditingClosure = nil
@@ -79,13 +87,13 @@ final class InputViewModel: ObservableObject {
     private func inputViewActionInternal(_ action: InputViewAction) {
         switch action {
         case .photo:
-            mediaPickerMode = .photos
-            showMediaPicker = true
-        case .add:
-            mediaPickerMode = .camera
-        case .camera:
-            mediaPickerMode = .camera
-            showMediaPicker = true
+            showPhotoPicker = true
+        case .add, .camera:
+            if AVCaptureDevice.default(for: .video) != nil {
+                showCameraPicker = true
+            } else {
+                showCameraUnavailableAlert = true
+            }
         case .document:
             showDocumentPicker = true
         case .location:
@@ -137,6 +145,21 @@ final class InputViewModel: ObservableObject {
         case .cancelEdit:
             reset()
         }
+    }
+
+    func importSelectedPhotos(_ items: [PhotosPickerItem]) async {
+        selectedPhotoItems = []
+        guard !items.isEmpty else { return }
+
+        mediaImportGeneration += 1
+        let generation = mediaImportGeneration
+        isImportingMedia = true
+
+        let importedMedia = await NativeMediaImporter.importItems(items)
+        guard generation == mediaImportGeneration else { return }
+
+        attachments.medias = importedMedia
+        isImportingMedia = false
     }
 
     private func recordAudio() {

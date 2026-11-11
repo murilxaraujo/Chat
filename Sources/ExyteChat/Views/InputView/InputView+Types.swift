@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import ExyteMediaPicker
 
 public enum InputViewStyle: Sendable {
     case message
@@ -71,7 +70,7 @@ public enum AvailableInputType: Sendable {
 }
 
 public struct InputViewAttachments {
-    var medias: [Media] = []
+    var medias: [DraftMedia] = []
     var documents: [DocumentItem] = []
     var staticLocation: StaticLocation?
     var liveLocation: LiveLocation?

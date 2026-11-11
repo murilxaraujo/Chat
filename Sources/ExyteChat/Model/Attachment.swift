@@ -3,9 +3,8 @@
 //
 
 import Foundation
-import ExyteMediaPicker
 
-public enum AttachmentType: String, Codable, Sendable {
+public enum AttachmentType: String, Codable, Hashable, Sendable {
     case image
     case video
     case document
@@ -21,14 +20,6 @@ public enum AttachmentType: String, Codable, Sendable {
         }
     }
 
-    public init(mediaType: MediaType) {
-        switch mediaType {
-        case .image:
-            self = .image
-        default:
-            self = .video
-        }
-    }
 }
 
 public struct Attachment: Codable, Identifiable, Hashable, Sendable {

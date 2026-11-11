@@ -6,13 +6,10 @@
 //
 
 import SwiftUI
-import ExyteMediaPicker
-import AnchoredPopup
 
 struct InputView: View {
 
     @Environment(\.chatTheme) var theme
-    @Environment(\.mediaPickerTheme) var pickerTheme
     @Environment(\.chatSize) var chatSize
 
     @EnvironmentObject var keyboardState: KeyboardState
@@ -25,7 +22,6 @@ struct InputView: View {
     var availableInputs: [AvailableInputType]
     var recorderSettings: RecorderSettings = RecorderSettings()
     var audioRecordingMode: AudioRecordingMode = .holdToRecord
-    var photoPickerBackend: PhotoPickerBackend = .custom
     var localization: ChatLocalization
 
     @State var stopRecordButtonSize: CGSize = .zero
@@ -39,6 +35,7 @@ struct InputView: View {
     @State var dragStart: Date?
     @State var tapDelayTimer: Timer?
     @State var cancelGesture = false
+    @State var isAttachMenuPresented = false
 
     var onAction: (InputViewAction) -> Void {
         viewModel.inputViewAction()
@@ -89,11 +86,7 @@ struct InputView: View {
             case .message:
                 leftButton
             case .signature:
-                if viewModel.mediaPickerMode == .cameraSelection {
-                    addButton
-                } else {
-                    Color.clear.frame(width: 12, height: 1)
-                }
+                addButton
             }
         }
     }
@@ -144,7 +137,12 @@ struct InputView: View {
 
     @ViewBuilder
     var rightOutsideButton: some View {
-        if state == .editing {
+        if viewModel.isImportingMedia {
+            ProgressView()
+                .tint(.white)
+                .viewSize(48)
+                .circleBackground(theme.colors.sendButtonBackground)
+        } else if state == .editing {
             editingButtons
                 .frame(height: 48)
         } else if audioRecordingMode == .tapToToggle {
@@ -215,7 +213,7 @@ struct InputView: View {
         case .message:
             return theme.contentBG
         case .signature:
-            return pickerTheme.main.pickerBackground
+            return theme.colors.inputSignatureBG
         }
     }
 

@@ -3,12 +3,11 @@
 //
 
 import Foundation
-import ExyteMediaPicker
 
 public struct DraftMessage: Sendable {
     public var id: String?
     public let text: String
-    public let medias: [Media]
+    public let medias: [DraftMedia]
     public let documents: [DocumentItem]
     public let staticLocation: StaticLocation?
     public let liveLocation: LiveLocation?
@@ -19,7 +18,7 @@ public struct DraftMessage: Sendable {
     public init(
         id: String? = nil,
         text: String,
-        medias: [Media],
+        medias: [DraftMedia],
         documents: [DocumentItem] = [],
         staticLocation: StaticLocation? = nil,
         liveLocation: LiveLocation? = nil,

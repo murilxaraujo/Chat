@@ -7,10 +7,6 @@
 
 import SwiftUI
 import PhotosUI
-import ExyteMediaPicker
-
-public typealias MediaPickerLiveCameraStyle = LiveCameraCellStyle
-public typealias MediaPickerSelectionParameters = SelectionParameters // showFullscreenPreview doesn't work with the system picker
 
 public enum ChatType: CaseIterable, Sendable {
     case conversation // the latest message is at the bottom, new messages appear from the bottom
@@ -99,26 +95,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
     @State private var chatSize: CGSize = .zero
 
-    /// the system picker only handles photo/video library browsing, not camera capture,
-    /// so camera requests always fall through to the ExyteMediaPicker
-    private var useSystemPhotoPicker: Bool {
-        inputViewCustomizationParameters.photoPickerBackend == .system && inputViewModel.mediaPickerMode == .photos
-    }
-
-    private var customMediaPickerBinding: Binding<Bool> {
-        Binding(
-            get: { inputViewModel.showMediaPicker && !useSystemPhotoPicker },
-            set: { inputViewModel.showMediaPicker = $0 }
-        )
-    }
-
-    private var systemMediaPickerBinding: Binding<Bool> {
-        Binding(
-            get: { inputViewModel.showMediaPicker && useSystemPhotoPicker },
-            set: { inputViewModel.showMediaPicker = $0 }
-        )
-    }
-
     // MARK: - Body
 
     public var body: some View {
@@ -166,7 +142,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 }
             }
             // any attachment picker opening should resign the text field's focus
-            .onChange(of: [inputViewModel.showMediaPicker, inputViewModel.showDocumentPicker, inputViewModel.showLocationPicker]) { _, newValues in
+            .onChange(of: [inputViewModel.showPhotoPicker, inputViewModel.showCameraPicker, inputViewModel.showDocumentPicker, inputViewModel.showLocationPicker]) { _, newValues in
                 if newValues.contains(true) {
                     globalFocusState.focus = nil
                 }
@@ -178,22 +154,33 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
     private var mainViewWithBehaviorsAndSheets: some View {
         mainViewWithBehaviors
-            .fullScreenCover(isPresented: customMediaPickerBinding) {
-                AttachmentsEditor(
-                    inputViewModel: inputViewModel,
-                    inputViewBuilder: inputViewBuilder,
-                    mediaPickerParameters: inputViewCustomizationParameters.mediaPickerParameters,
-                    availableInputs: inputViewCustomizationParameters.availableInputs,
-                    localization: chatCustomizationParameters.localization
-                )
-                .environmentObject(globalFocusState)
-                .environmentObject(keyboardState)
-            }
-            .systemPhotoPicker(
-                isPresented: systemMediaPickerBinding,
-                medias: $inputViewModel.attachments.medias,
-                selectionParameters: inputViewCustomizationParameters.mediaPickerParameters.selectionParameters
+            .photosPicker(
+                isPresented: $inputViewModel.showPhotoPicker,
+                selection: $inputViewModel.selectedPhotoItems,
+                maxSelectionCount: inputViewCustomizationParameters.photoPickerSelectionLimit,
+                selectionBehavior: .ordered,
+                matching: .any(of: [.images, .videos])
             )
+            .onChange(of: inputViewModel.showPhotoPicker) { _, isPresented in
+                guard !isPresented else { return }
+                let selectedItems = inputViewModel.selectedPhotoItems
+                Task {
+                    await inputViewModel.importSelectedPhotos(selectedItems)
+                }
+            }
+            .fullScreenCover(isPresented: $inputViewModel.showCameraPicker) {
+                NativeCameraView(onCapture: { media in
+                    inputViewModel.attachments.medias.append(media)
+                    inputViewModel.showCameraPicker = false
+                }, onCancel: {
+                    inputViewModel.showCameraPicker = false
+                })
+            }
+            .alert("Camera Unavailable", isPresented: $inputViewModel.showCameraUnavailableAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("This device does not have a camera.")
+            }
             .sheet(isPresented: $inputViewModel.showDocumentPicker) {
                 DocumentPicker { documents in
                     inputViewModel.attachments.documents.append(contentsOf: documents)
@@ -410,7 +397,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     availableInputs: inputViewCustomizationParameters.availableInputs,
                     recorderSettings: inputViewCustomizationParameters.recorderSettings,
                     audioRecordingMode: inputViewCustomizationParameters.audioRecordingMode,
-                    photoPickerBackend: inputViewCustomizationParameters.photoPickerBackend,
                     localization: chatCustomizationParameters.localization
                 )
             } else {

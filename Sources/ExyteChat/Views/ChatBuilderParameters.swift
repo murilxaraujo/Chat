@@ -32,7 +32,7 @@ public struct MessageBuilderParameters {
 /// To build a custom input view use the following parameters passed by builder closure:
 /// - binding to the text in input view
 /// - InputViewAttachments to store the attachments from external pickers
-/// - current input view state: .message for main input view mode and .signature for input view in media picker mode
+/// - current input view state: .message for the chat composer or .signature for a signature-style input
 /// - closure to pass user interaction, .recordAudioTap for example
 /// - dismiss keyboard closure
 public struct InputViewBuilderParameters {

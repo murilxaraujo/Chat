@@ -28,20 +28,6 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "MediaPicker"
-               BuildableName = "MediaPicker"
-               BlueprintName = "MediaPicker"
-               ReferencedContainer = "container:../../MediaPicker">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "FloatingButton"
                BuildableName = "FloatingButton"
                BlueprintName = "FloatingButton"
@@ -60,20 +46,6 @@
                BuildableName = "ExyteChat"
                BlueprintName = "ExyteChat"
                ReferencedContainer = "container:..">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "ExyteMediaPicker"
-               BuildableName = "ExyteMediaPicker"
-               BlueprintName = "ExyteMediaPicker"
-               ReferencedContainer = "container:../../MediaPicker">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ActivityIndicatorView
 
 final class PaginationState: ObservableObject {
     @Published var olderInProgress = false
@@ -75,9 +74,9 @@ public struct DefaultActivityIndicator: View {
     }
 
     public var body: some View {
-        ActivityIndicatorView(type: .default())
-            .foregroundColor(color != nil ? color! : theme.colors.sendButtonBackground)
-            .viewSize(size)
+        ProgressView()
+            .tint(color ?? theme.colors.sendButtonBackground)
+            .frame(width: size, height: size)
             .padding(.vertical, 10)
     }
 }

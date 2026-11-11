@@ -31,7 +31,7 @@
 </table>
 
 <p><h1>Chat</h1></p>
-<p><h4>A SwiftUI Chat UI framework with fully customizable message cells and a built-in media picker</h4></p>
+<p><h4>A SwiftUI Chat UI framework with fully customizable message cells and native attachment pickers</h4></p>
 
 ![](https://img.shields.io/github/v/tag/exyte/Chat?label=Version)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fexyte%2FChat%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/exyte/Chat)
@@ -43,7 +43,7 @@
 # Features
 - Displays your messages with pagination and allows you to create and "send" new messages (sending means calling a closure since user will be the one providing actual API calls)
 - Allows you to pass a custom view builder for messages and input views
-- Has a built-in photo and video library/camera picker for multiple media asset selection
+- Uses Apple's Photos picker for multiple photo/video selection and the system camera for capture
 - Can display a fullscreen menu on long press a message cell (automatically shows scroll for big messages)
 - Supports reply, edit, and delete via the message menu
 - This library allows to send the following content in messages in any combination:
@@ -353,15 +353,9 @@ ChatView(messages: viewModel.messages) { draft in
 `audioRecordingMode` - choose how audio recording is triggered:    
     - `.holdToRecord` (default) - hold the mic button to record; slide up to lock into hands-free mode    
     - `.tapToToggle` - tap the mic button once to start recording, tap the stop button to finish. No lock capsule    
-`assetsPickerLimit` - set a limit for MediaPicker built into the library    
-`setMediaPickerSelectionParameters` - a struct holding MediaPicker selection parameters (selection limit, media type, selection style, etc.)    
-`setMediaPickerParameters` - configure low-level MediaPicker parameters    
-`orientationHandler` - handle screen rotation during media picking    
-`photoPickerBackend` - choose which photo/video picker is presented when the user taps to attach media:    
-    - `.custom` (default) - ExyteMediaPicker fully customizable built-in media picker    
-    - `.system` - Apple's native `PhotosPicker` for apps that don't need a customized picker UI. Selected items are shown as a removable thumbnail strip above the input field, and camera capture always uses the ExyteMediaPicker regardless of this setting.    
+`photoPickerSelectionLimit(_:)` - limit the number of photos and videos selected with Apple's `PhotosPicker`; pass `nil` for no limit
 
-The attach button on the left opens a popup menu to choose between available attachment types. If `photoPickerBackend` is `.system`, a separate Camera entry is also added to the menu, since Apple's native `PhotosPicker` can't capture photos/video itself; with the default `.custom` backend, camera capture is reachable from within the media picker itself, so no separate entry is needed. If there's only one attachment option in total, tapping the button triggers it directly with no popup. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
+The attach button opens a menu for photos/videos, camera, documents, and locations, depending on the inputs enabled with `setAvailableInputs`. Photos and videos are selected with Apple's `PhotosPicker`, which only grants access to items the user selects and does not require broad Photos library authorization. Camera capture uses AVFoundation and requires `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` entries in the host app's `Info.plist`. Selected files are copied to the app's temporary directory and exposed to the send closure as `DraftMedia` values. Upload or move those files to persistent storage before the app needs to retain a draft across launches. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
 
 ### Customize default colors and images
 You can use `chatTheme` to customize colors and images of default UI. You can pass all/some colors and images:
@@ -398,7 +392,7 @@ You can use `chatTheme` to customize colors and images of default UI. You can pa
 )
 
 ```
-By default the built-in MediaPicker will be auto-customized using the most logical colors from chatTheme. But you can always use `mediaPickerTheme` in a similar fashion to set your own colors.      
+The native photo and camera interfaces use the system appearance. The attachment preview strip and chat input continue to use the colors from `chatTheme`.
   
 <img src="https://raw.githubusercontent.com/exyte/media/master/Chat/pic2.png" width="300">
 
@@ -593,23 +587,20 @@ dependencies: [
 
 ## Requirements
 
-* iOS 17+
-* Xcode 15+
+* iOS 27+
+* Xcode 27+
 
 ## Our other open source SwiftUI libraries
 [LazyCustomLayout](https://github.com/exyte/LazyCustomLayout) - A custom layout protocol for SwiftUI, powered by a lazy scroll view   
 [PopupView](https://github.com/exyte/PopupView) - Toasts and popups library    
-[AnchoredPopup](https://github.com/exyte/AnchoredPopup) - Anchored Popup grows "out" of a trigger view (similar to Hero animation)   
 [Grid](https://github.com/exyte/Grid) - The most powerful Grid container    
 [ScalingHeaderScrollView](https://github.com/exyte/ScalingHeaderScrollView) - A scroll view with a sticky header which shrinks as you scroll    
 [AnimatedTabBar](https://github.com/exyte/AnimatedTabBar) - A tabbar with a number of preset animations   
-[MediaPicker](https://github.com/exyte/mediapicker) - Customizable media picker     
 [CalendarView](https://github.com/exyte/CalendarView) - Calendar view with fully customizable month/day cells     
 [OpenAI](https://github.com/exyte/OpenAI) Wrapper lib for [OpenAI REST API](https://platform.openai.com/docs/api-reference/introduction)    
 [AnimatedGradient](https://github.com/exyte/AnimatedGradient) - Animated linear gradient     
 [ConcentricOnboarding](https://github.com/exyte/ConcentricOnboarding) - Animated onboarding flow    
 [FloatingButton](https://github.com/exyte/FloatingButton) - Floating button menu    
-[ActivityIndicatorView](https://github.com/exyte/ActivityIndicatorView) - A number of animated loading indicators    
 [ProgressIndicatorView](https://github.com/exyte/ProgressIndicatorView) - A number of animated progress indicators    
 [FlagAndCountryCode](https://github.com/exyte/FlagAndCountryCode) - Phone codes and flags for every country    
 [SVGView](https://github.com/exyte/SVGView) - SVG parser    

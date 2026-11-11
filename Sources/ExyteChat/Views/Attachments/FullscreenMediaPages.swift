@@ -45,7 +45,7 @@ struct FullscreenMediaPages: View {
         ZStack {
             HStack {
                 Button(action: onClose) {
-                    theme.images.mediaPicker.cross
+                    theme.images.message.cancel
                         .imageScale(.large)
                         .padding(5)
                 }

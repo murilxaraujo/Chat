@@ -4,7 +4,6 @@
 
 import SwiftUI
 import ExyteChat
-import ExyteMediaPicker
 
 struct ContentView: View {
     
@@ -48,16 +47,6 @@ struct ContentView: View {
                                 inputSignatureText: .black,
                                 inputSignaturePlaceholderText: .black.opacity(0.7)
                             )))
-                            .mediaPickerTheme(
-                                main: .init(
-                                    pickerText: .white,
-                                    pickerBackground: Color(.examplePickerBg),
-                                    fullscreenPhotoBackground: Color(.examplePickerBg)
-                                ),
-                                selection: .init(
-                                    accent: Color(.exampleBlue)
-                                )
-                            )
                     }
                 } header: {
                     Text("Basic examples")
@@ -130,5 +119,4 @@ enum ExampleThemeState: String {
         return true
     }
 }
-
 

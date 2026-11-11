@@ -4,7 +4,6 @@
 
 import Foundation
 import ExyteChat
-import ExyteMediaPicker
 
 final actor MockChatInteractor {
 
@@ -184,19 +183,14 @@ extension MockChatInteractor {
     }
 
     func makeAttachments(_ draftMessage: DraftMessage) async -> [Attachment] {
-        let mediaAttachments = await draftMessage.medias
-            .asyncMap { (media: Media) -> (Media, URL?, URL?) in
-                (media, await media.getThumbnailURL(), await media.getURL())
-            }
-            .filter { $0.1 != nil && $0.2 != nil }
-            .map { media, thumb, full in
-                Attachment(
-                    id: media.id.uuidString,
-                    thumbnail: thumb!,
-                    full: full!,
-                    type: AttachmentType(mediaType: media.type)
-                )
-            }
+        let mediaAttachments = draftMessage.medias.map { media in
+            Attachment(
+                id: media.id,
+                thumbnail: media.thumbnailURL,
+                full: media.url,
+                type: media.type
+            )
+        }
 
         let documentAttachments = draftMessage.documents.map { document in
             Attachment(

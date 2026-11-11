@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ExyteMediaPicker
 
 public extension ChatView {
 
@@ -359,46 +358,18 @@ public extension ChatView {
         return view
     }
 
-    // MARK: - Media picker
+    // MARK: - Native photo picker
 
-    func setMediaPickerLiveCameraStyle(_ style: MediaPickerLiveCameraStyle) -> ChatView {
+    /// Sets the maximum number of photos and videos that can be selected. Pass `nil` for no limit.
+    func photoPickerSelectionLimit(_ limit: Int?) -> ChatView {
         var view = self
-        view.inputViewCustomizationParameters.mediaPickerParameters.liveCameraStyle = style
+        view.inputViewCustomizationParameters.photoPickerSelectionLimit = limit.map { max(1, $0) }
         return view
     }
 
+    /// Compatibility alias. Use `photoPickerSelectionLimit(_:)` instead.
+    @available(*, deprecated, renamed: "photoPickerSelectionLimit(_:)")
     func assetsPickerLimit(assetsPickerLimit: Int) -> ChatView {
-        var view = self
-        view.inputViewCustomizationParameters.mediaPickerParameters.selectionParameters.selectionLimit = assetsPickerLimit
-        return view
-    }
-
-    func setMediaPickerSelectionParameters(_ params: MediaPickerSelectionParameters) -> ChatView {
-        var view = self
-        view.inputViewCustomizationParameters.mediaPickerParameters.selectionParameters = params
-        return view
-    }
-
-    func orientationHandler(orientationHandler: @escaping MediaPickerOrientationHandler) -> ChatView {
-        var view = self
-        view.inputViewCustomizationParameters.mediaPickerParameters.orientationHandler = orientationHandler
-        return view
-    }
-
-    func setMediaPickerParameters(_ params: MediaPickerParameters) -> ChatView {
-        var view = self
-        view.inputViewCustomizationParameters.mediaPickerParameters = params
-        return view
-    }
-
-    /// Choose which photo/video picker backend is presented when the user taps to attach media.
-    /// - `.custom` (default): ExyteChat's fully customizable built-in media picker.
-    /// - `.system`: Apple's native PhotosPicker.
-    ///
-    /// Camera capture always uses the ExyteMediaPicker regardless of this setting.
-    func photoPickerBackend(_ backend: PhotoPickerBackend) -> ChatView {
-        var view = self
-        view.inputViewCustomizationParameters.photoPickerBackend = backend
-        return view
+        photoPickerSelectionLimit(assetsPickerLimit)
     }
 }

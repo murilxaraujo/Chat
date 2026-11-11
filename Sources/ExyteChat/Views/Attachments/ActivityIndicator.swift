@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ActivityIndicatorView
 
 struct ActivityIndicator: View {
 
@@ -23,9 +22,9 @@ struct ActivityIndicator: View {
                     .cornerRadius(8)
             }
 
-            ActivityIndicatorView(type: .flickeringDots())
-                .foregroundColor(color != nil ? color! : theme.colors.sendButtonBackground)
-                .viewSize(size)
+            ProgressView()
+                .tint(color ?? theme.colors.sendButtonBackground)
+                .frame(width: size, height: size)
         }
     }
 }

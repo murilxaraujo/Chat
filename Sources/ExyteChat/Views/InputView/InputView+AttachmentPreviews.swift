@@ -4,13 +4,12 @@
 //
 
 import SwiftUI
-import ExyteMediaPicker
 
 extension InputView {
 
     @ViewBuilder
     var viewOnTop: some View {
-        if style == .message, photoPickerBackend == .system, !viewModel.attachments.medias.isEmpty {
+        if style == .message, !viewModel.attachments.medias.isEmpty {
             mediaAttachmentsPreview
         }
         if style == .message, !viewModel.attachments.documents.isEmpty {
@@ -126,7 +125,7 @@ extension InputView {
                     viewModel.attachments.staticLocation = nil
                 }
             } label: {
-                theme.images.mediaPicker.cross
+                theme.images.message.cancel
                     .sizeAndColor(10, .white)
                     .padding(4)
                     .background(Circle().fill(Color.black.opacity(0.6)))
@@ -154,7 +153,7 @@ extension InputView {
                     viewModel.attachments.liveLocation = nil
                 }
             } label: {
-                theme.images.mediaPicker.cross
+                theme.images.message.cancel
                     .sizeAndColor(10, .white)
                     .padding(4)
                     .background(Circle().fill(Color.black.opacity(0.6)))
@@ -184,7 +183,7 @@ private struct RemovableAttachmentThumbnail<Content: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(alignment: .topTrailing) {
                 Button(action: onRemove) {
-                    theme.images.mediaPicker.cross
+                    theme.images.message.cancel
                         .sizeAndColor(10, .white)
                         .padding(4)
                         .background(Circle().fill(Color.black.opacity(0.6)))
@@ -197,21 +196,21 @@ private struct RemovableAttachmentThumbnail<Content: View>: View {
 private struct MediaAttachmentThumbnail: View {
     @Environment(\.chatTheme) var theme
 
-    var media: Media
+    var media: DraftMedia
     var onRemove: () -> Void
-
-    @State private var thumbnail: UIImage?
 
     var body: some View {
         RemovableAttachmentThumbnail(onRemove: onRemove) {
             ZStack {
-                if let thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Rectangle()
-                        .fill(theme.colors.messageFriendBG)
+                ChatAsyncImage(url: media.thumbnailURL) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Rectangle()
+                            .fill(theme.colors.messageFriendBG)
+                    }
                 }
                 
                 if media.type == .video {
@@ -219,11 +218,6 @@ private struct MediaAttachmentThumbnail: View {
                         .foregroundColor(.white)
                         .font(.system(size: 20))
                 }
-            }
-        }
-        .task(id: media.id) {
-            if let data = await media.getThumbnailData(), let image = UIImage(data: data) {
-                thumbnail = image
             }
         }
     }

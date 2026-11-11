@@ -4,7 +4,6 @@
 
 import SwiftUI
 import ExyteChat
-import ActivityIndicatorView
 
 enum ChatExampleMenuAction: MessageMenuAction {
     case copy, reply, edit, delete
@@ -91,7 +90,6 @@ struct ChatExampleView: View {
         .scrollTo(viewModel.scrollToParams)
         .inputViewText($text)
         .keyboardDismissMode(.interactive)
-        .setMediaPickerLiveCameraStyle(.prominant)
         .setRecorderSettings(recorderSettings)
         .messageReactionDelegate(viewModel)
         .showLastReadIndicator(true)
@@ -119,7 +117,8 @@ struct ChatExampleView: View {
     }
 
     var activityIndicatorView: some View {
-        ActivityIndicatorView(type: .default())
+        ProgressView()
+            .tint(Color(.exampleBlue))
             .frame(width: 30, height: 30)
             .padding(.vertical, 10)
     }

@@ -260,9 +260,6 @@ public struct ChatTheme: Sendable {
             public var document: Image
             public var location: Image
             public var photo: Image
-            public var pickDocument: Image
-            public var pickLocation: Image
-            public var pickPhoto: Image
         }
 
         public struct InputView: Sendable {
@@ -280,12 +277,6 @@ public struct ChatTheme: Sendable {
             public var mute: Image
             public var unmute: Image
             public var share: Image
-        }
-
-        public struct MediaPicker: Sendable {
-            public var chevronDown: Image
-            public var chevronRight: Image
-            public var cross: Image
         }
 
         public struct Message: Sendable {
@@ -335,7 +326,6 @@ public struct ChatTheme: Sendable {
         public var attachMenu: AttachMenu
         public var inputView: InputView
         public var fullscreenMedia: FullscreenMedia
-        public var mediaPicker: MediaPicker
         public var message: Message
         public var messageMenu: MessageMenu
         public var recordAudio: RecordAudio
@@ -347,9 +337,6 @@ public struct ChatTheme: Sendable {
             document: Image? = nil,
             location: Image? = nil,
             photo: Image? = nil,
-            pickDocument: Image? = nil,
-            pickLocation: Image? = nil,
-            pickPhoto: Image? = nil,
             add: Image? = nil,
             arrowSend: Image? = nil,
             attach: Image? = nil,
@@ -361,9 +348,6 @@ public struct ChatTheme: Sendable {
             fullscreenMute: Image? = nil,
             fullscreenUnmute: Image? = nil,
             fullscreenShare: Image? = nil,
-            chevronDown: Image? = nil,
-            chevronRight: Image? = nil,
-            cross: Image? = nil,
             attachedDocument: Image? = nil,
             cancel: Image? = nil,
             error: Image? = nil,
@@ -405,10 +389,7 @@ public struct ChatTheme: Sendable {
                 contact: contact ?? Image("contact", bundle: .current),
                 document: document ?? Image("document", bundle: .current),
                 location: location ?? Image("location", bundle: .current),
-                photo: photo ?? Image("photo", bundle: .current),
-                pickDocument: pickDocument ?? Image("pickDocument", bundle: .current),
-                pickLocation: pickLocation ?? Image("pickLocation", bundle: .current),
-                pickPhoto: pickPhoto ?? Image("pickPhoto", bundle: .current)
+                photo: photo ?? Image("photo", bundle: .current)
             )
 
             self.inputView = InputView(
@@ -426,12 +407,6 @@ public struct ChatTheme: Sendable {
                 mute: fullscreenMute ?? Image(systemName: "speaker.slash.fill"),
                 unmute: fullscreenUnmute ?? Image(systemName: "speaker.fill"),
                 share: fullscreenShare ?? Image(systemName: "square.and.arrow.up")
-            )
-
-            self.mediaPicker = MediaPicker(
-                chevronDown: chevronDown ?? Image("chevronDown", bundle: .current),
-                chevronRight: chevronRight ?? Image("chevronRight", bundle: .current),
-                cross: cross ?? Image(systemName: "xmark")
             )
 
             self.message = Message(

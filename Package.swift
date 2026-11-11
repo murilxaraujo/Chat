@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.4
 
 import PackageDescription
 
@@ -6,30 +6,18 @@ let package = Package(
     name: "Chat",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v27)
     ],
     products: [
         .library(
             name: "ExyteChat",
             targets: ["ExyteChat"]),
     ],
-    dependencies: [
-        .package(
-            url: "https://github.com/exyte/MediaPicker.git",
-            from: "3.4.4"
-        ),
-        .package(
-            url: "https://github.com/exyte/AnchoredPopup.git",
-            from: "1.1.3"
-        ),
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "ExyteChat",
-            dependencies: [
-                .product(name: "ExyteMediaPicker", package: "MediaPicker"),
-                .product(name: "AnchoredPopup", package: "AnchoredPopup")
-            ],
+            dependencies: [],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]

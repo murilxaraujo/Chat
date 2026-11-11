@@ -5,7 +5,6 @@
 
 import SwiftUI
 import UIKit
-import AnchoredPopup
 
 private struct AttachMenuItem {
     let icon: Image
@@ -13,18 +12,13 @@ private struct AttachMenuItem {
     let action: InputViewAction
 }
 
-private let attachMenuLeftMargin: CGFloat = 14
-private let attachMenuGap: CGFloat = 16
-
 extension InputView {
 
     fileprivate var attachMenuItems: [AttachMenuItem] {
         var items: [AttachMenuItem] = []
         if isMediaAvailable() {
             items.append(AttachMenuItem(icon: theme.images.inputView.attach, title: localization.attachMediaText, action: .photo))
-            if photoPickerBackend == .system {
-                items.append(AttachMenuItem(icon: theme.images.inputView.attachCamera, title: localization.attachCameraText, action: .camera))
-            }
+            items.append(AttachMenuItem(icon: theme.images.inputView.attachCamera, title: localization.attachCameraText, action: .camera))
         }
         if isDocumentAvailable() {
             items.append(AttachMenuItem(icon: theme.images.attachMenu.document, title: localization.attachDocumentText, action: .document))
@@ -50,18 +44,16 @@ extension InputView {
         }
     }
 
-    var attachMenuPopupId: String {
-        "exyte-chat-attach-menu-\(inputFieldId)"
-    }
-
     fileprivate func attachMenuContent(_ items: [AttachMenuItem]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 AttachMenuRow(icon: item.icon, title: item.title) {
                     onAction(item.action)
+                    isAttachMenuPresented = false
                 }
             }
         }
+        .frame(minWidth: 220, alignment: .leading)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 14)
@@ -71,29 +63,27 @@ extension InputView {
     }
 
     fileprivate func attachMenuButton(items: [AttachMenuItem]) -> some View {
-        theme.images.inputView.attach
-            .viewSize(24)
-            .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 6))
-            .useAsPopupAnchor(id: attachMenuPopupId) {
-                attachMenuContent(items)
-            } customize: {
-                $0.position(.absolute(.bottomLeading, position: CGPoint(x: attachMenuLeftMargin, y: inputBarFrame.minY - attachMenuGap)))
-                    .background(.none)
-                    .closeOnTapOutside(true)
-                    .animation(.default)
-                    .openOnTap(false)
-            }
-            .onTapGesture {
-                openAttachMenu()
-            }
+        Button {
+            openAttachMenu()
+        } label: {
+            theme.images.inputView.attach
+                .viewSize(24)
+                .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 6))
+        }
+        .popover(
+            isPresented: $isAttachMenuPresented,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: .bottom
+        ) {
+            attachMenuContent(items)
+                .presentationCompactAdaptation(.popover)
+        }
     }
 
-    /// the popup's position is derived from `inputBarFrame`, which only settles into its
-    /// post-keyboard layout once the keyboard has fully dismissed, so the growing animation
-    /// is deferred until then to avoid anchoring to the pre-dismiss frame
+    /// Wait for the keyboard to dismiss so the popover anchors to the input bar's final frame.
     fileprivate func openAttachMenu() {
         guard keyboardState.isShown else {
-            AnchoredPopup.launchGrowingAnimation(id: attachMenuPopupId)
+            isAttachMenuPresented = true
             return
         }
 
@@ -102,7 +92,7 @@ extension InputView {
             for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification) {
                 break
             }
-            AnchoredPopup.launchGrowingAnimation(id: attachMenuPopupId)
+            isAttachMenuPresented = true
         }
     }
 
@@ -119,7 +109,6 @@ extension InputView {
 
 private struct AttachMenuRow: View {
     @Environment(\.chatTheme) var theme
-    @Environment(\.anchoredPopupDismiss) var dismissPopup
 
     let icon: Image
     let title: String
@@ -128,7 +117,6 @@ private struct AttachMenuRow: View {
     var body: some View {
         Button {
             action()
-            dismissPopup?()
         } label: {
             HStack(spacing: 10) {
                 icon

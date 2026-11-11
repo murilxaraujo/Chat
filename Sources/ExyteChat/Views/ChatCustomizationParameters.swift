@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import ExyteMediaPicker
 
 struct ChatCustomizationParameters {
     var isListAboveInputView: Bool = true
@@ -79,17 +78,5 @@ struct InputViewCustomizationParameters {
     var availableInputs: [AvailableInputType] = [.text, .audio, .media]
     var recorderSettings = RecorderSettings()
     var audioRecordingMode: AudioRecordingMode = .holdToRecord
-    var mediaPickerParameters = MediaPickerParameters()
-    var photoPickerBackend: PhotoPickerBackend = .custom
-}
-
-public typealias MediaPickerParameters = ExyteMediaPicker.MediaPickerCutomizationParameters
-
-/// Which photo/video picker is presented when the user taps to attach media.
-public enum PhotoPickerBackend: Sendable, Equatable {
-    /// ExyteMediaPicker fully customizable built-in media picker (default)
-    case custom
-    /// Apple's native PhotosPicker
-    /// Camera capture always uses the ExyteMediaPicker regardless of this setting.
-    case system
+    var photoPickerSelectionLimit: Int? = nil
 }

@@ -135,20 +135,13 @@ public struct Message: Identifiable, Sendable {
         status: Status? = nil,
         draft: DraftMessage
     ) async -> Message {
-        let attachments = await draft.medias.asyncCompactMap { media -> Attachment? in
-            guard let thumbnailURL = await media.getThumbnailURL() else {
-                return nil
-            }
-
-            switch media.type {
-            case .image:
-                return Attachment(id: UUID().uuidString, url: thumbnailURL, type: .image)
-            case .video:
-                guard let fullURL = await media.getURL() else {
-                    return nil
-                }
-                return Attachment(id: UUID().uuidString, thumbnail: thumbnailURL, full: fullURL, type: .video)
-            }
+        let attachments = draft.medias.map { media in
+            Attachment(
+                id: media.id,
+                thumbnail: media.thumbnailURL,
+                full: media.url,
+                type: media.type
+            )
         }
 
         let documentAttachments = draft.documents.map { document in
