@@ -44,7 +44,6 @@
 - Displays your messages with pagination and allows you to create and "send" new messages (sending means calling a closure since user will be the one providing actual API calls)
 - Allows you to pass a custom view builder for messages and input views
 - Has a built-in photo and video library/camera picker for multiple media asset selection
-- Sticker keyboard that integrates with Giphy
 - Can display a fullscreen menu on long press a message cell (automatically shows scroll for big messages)
 - Supports reply, edit, and delete via the message menu
 - This library allows to send the following content in messages in any combination:
@@ -52,7 +51,6 @@
     - Photo/video
     - Audio recording
     - Link with preview
-    - Gif/Sticker
     - Documents (any file type, picked via the system document picker)
     - Location - a static location, or a live location share that keeps updating for 15 minutes, 1 hour, or 8 hours
     - Custom dictionary of any Sendable
@@ -349,7 +347,6 @@ ChatView(messages: viewModel.messages) { draft in
     - `.text`    
     - `.media`    
     - `.audio`    
-    - `.giphy`    
     - `.document`    
     - `.location`    
 `setRecorderSettings` - customize audio recorder settings    
@@ -364,7 +361,7 @@ ChatView(messages: viewModel.messages) { draft in
     - `.custom` (default) - ExyteMediaPicker fully customizable built-in media picker    
     - `.system` - Apple's native `PhotosPicker` for apps that don't need a customized picker UI. Selected items are shown as a removable thumbnail strip above the input field, and camera capture always uses the ExyteMediaPicker regardless of this setting.    
 
-The attach button on the left opens a popup menu to choose between Media and GIF when both are available via `setAvailableInputs`. If `photoPickerBackend` is `.system`, a separate Camera entry is also added to the menu, since Apple's native `PhotosPicker` can't capture photos/video itself; with the default `.custom` backend, camera capture is reachable from within the media picker itself, so no separate entry is needed. If there's only one attachment option in total, tapping the button triggers it directly with no popup. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.    
+The attach button on the left opens a popup menu to choose between available attachment types. If `photoPickerBackend` is `.system`, a separate Camera entry is also added to the menu, since Apple's native `PhotosPicker` can't capture photos/video itself; with the default `.custom` backend, camera capture is reachable from within the media picker itself, so no separate entry is needed. If there's only one attachment option in total, tapping the button triggers it directly with no popup. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
 
 ### Customize default colors and images
 You can use `chatTheme` to customize colors and images of default UI. You can pass all/some colors and images:
@@ -550,26 +547,6 @@ ChatView(messages: viewModel.messages) { draft in
 
 **Background limitation:** live updates keep flowing while your app is active or briefly backgrounded, but not indefinitely once the app is fully suspended. To keep broadcasting while backgrounded for longer, your app needs to opt into the `location` `UIBackgroundModes` entry (Info.plist) and the matching background modes capability/entitlement in Xcode - ExyteChat detects this automatically (`allowsBackgroundLocationUpdates` is only set when your app declares that background mode) and otherwise degrades gracefully instead of crashing.
 
-## Sticker Keyboard
-
-You can pick and send animated gifs via the integrated sticker keyboard. In order to use this functionality a client id must be granted via the [Giphy Developers](https://developers.giphy.com/) site.
-
-To include the sticker keyboard:
-
-```swift
-.setAvailableInputs([.text, .giphy])
-.giphyConfig(
-    GiphyConfiguration(
-        giphyKey: "client id",
-        mediaTypeConfig: [.recents, .gifs, .stickers, .clips],
-        showAttributionMark: true
-    )
-)
-```
-
-To approve a production client Id for your app, Giphy requires that you include a "Powered By GIPHY" attribution mark, see [attribution mark requirement](https://support.giphy.com/hc/en-us/articles/360035158592-What-conditions-does-my-app-project-need-to-meet-in-order-to-get-a-production-API-Key). Setting the showAttributionMark in the GiphyConfiguration struct will include a small overlay image on the giphy picker which meets the requirement needed for a production client key.
-
-
 ## Localization
 
 You can localize the inputs using the standard SwiftUI localization process, add the input strings to each languages Localizable.strings file.  
@@ -583,7 +560,6 @@ The library uses the following text that can be localized:
 - Recording...
 - Reply to
 - Media
-- GIF
 - Camera
 - Document
 - Location

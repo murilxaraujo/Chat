@@ -95,7 +95,7 @@ struct ChatExampleView: View {
         .setRecorderSettings(recorderSettings)
         .messageReactionDelegate(viewModel)
         .showLastReadIndicator(true)
-        .setAvailableInputs([.text, .media, .giphy, .audio, .document, .staticLocation, .liveLocation])
+        .setAvailableInputs([.text, .media, .audio, .document, .staticLocation, .liveLocation])
         .onLiveLocationBroadcast { event in
             switch event {
             case .updated(let messageId, let liveLocation):

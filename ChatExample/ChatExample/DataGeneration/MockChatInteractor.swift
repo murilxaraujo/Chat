@@ -175,7 +175,6 @@ extension MockChatInteractor {
             createdAt: draftMessage.createdAt,
             text: draftMessage.text,
             attachments: await makeAttachments(draftMessage),
-            giphyMediaId: draftMessage.giphyMedia?.id,
             staticLocation: draftMessage.staticLocation,
             liveLocation: draftMessage.liveLocation,
             reactions: [],

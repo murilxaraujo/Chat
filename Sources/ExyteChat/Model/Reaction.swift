@@ -7,7 +7,6 @@ import Foundation
 
 public enum ReactionType: Codable, Equatable, Hashable, Sendable {
     case emoji(String)
-    //case sticker(Image / Giphy / Memoji)
     //case other...
     
     var toString: String {
@@ -62,4 +61,3 @@ public struct DraftReaction: Codable, Identifiable, Hashable, Sendable {
         self.type = type
     }
 }
-

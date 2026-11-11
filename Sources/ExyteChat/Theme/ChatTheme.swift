@@ -10,17 +10,11 @@ import SwiftUI
 public extension EnvironmentValues {
     #if swift(>=6.0)
     @Entry var chatTheme = ChatTheme()
-    @Entry var giphyConfig = GiphyConfiguration()
     @Entry var chatLocalization = ChatLocalization.defaultLocalization
     #else
     var chatTheme: ChatTheme {
         get { self[ChatThemeKey.self] }
         set { self[ChatThemeKey.self] = newValue }
-    }
-
-    var giphyConfig: GiphyConfiguration {
-        get { self[GiphyConfigurationKey.self] }
-        set { self[GiphyConfigurationKey.self] = newValue }
     }
 
     var chatLocalization: ChatLocalization {
@@ -34,10 +28,6 @@ public extension EnvironmentValues {
 #if swift(<6.0)
 @preconcurrency public struct ChatThemeKey: EnvironmentKey {
     public static let defaultValue = ChatTheme()
-}
-
-public struct GiphyConfigurationKey: EnvironmentKey {
-    public static let defaultValue = GiphyConfiguration()
 }
 
 public struct ChatLocalizationKey: EnvironmentKey {
@@ -58,9 +48,6 @@ extension View {
         self.environment(\.chatTheme, ChatTheme(colors: colors, images: images))
     }
 
-    public func giphyConfig(_ config: GiphyConfiguration) -> some View {
-        self.environment(\.giphyConfig, config)
-    }
 }
 
 public struct ChatTheme: Sendable {
@@ -281,7 +268,6 @@ public struct ChatTheme: Sendable {
         public struct InputView: Sendable {
             public var add: Image
             public var arrowSend: Image
-            public var sticker: Image
             public var attach: Image
             public var attachCamera: Image
             public var microphone: Image
@@ -366,7 +352,6 @@ public struct ChatTheme: Sendable {
             pickPhoto: Image? = nil,
             add: Image? = nil,
             arrowSend: Image? = nil,
-            sticker: Image? = nil,
             attach: Image? = nil,
             attachCamera: Image? = nil,
             microphone: Image? = nil,
@@ -429,7 +414,6 @@ public struct ChatTheme: Sendable {
             self.inputView = InputView(
                 add: add ?? Image("add", bundle: .current),
                 arrowSend: arrowSend ?? Image("arrowSend", bundle: .current),
-                sticker: sticker ?? Image("sticker", bundle: .current),
                 attach: attach ?? Image("attach", bundle: .current),
                 attachCamera: attachCamera ?? Image("attachCamera", bundle: .current),
                 microphone: microphone ?? Image("microphone", bundle: .current),
