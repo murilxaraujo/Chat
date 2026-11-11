@@ -158,7 +158,7 @@ final class InputViewModel: ObservableObject {
         let importedMedia = await NativeMediaImporter.importItems(items)
         guard generation == mediaImportGeneration else { return }
 
-        attachments.medias = importedMedia
+        attachments.medias.append(contentsOf: importedMedia)
         isImportingMedia = false
     }
 

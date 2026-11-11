@@ -119,18 +119,20 @@ struct CommentsExampleView: View {
         let message = params.message
         VStack {
             HStack(alignment: .top, spacing: 12) {
-                if let url = message.user.avatarURL, url.scheme == "asset", let name = url.host {
-                    Image(name)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    AsyncImage(url: message.user.avatarURL) { phase in
-                        if let image = phase.image {
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            Rectangle().fill(Color.gray)
+                Group {
+                    if let url = message.user.avatarURL, url.scheme == "asset", let name = url.host {
+                        Image(name)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        AsyncImage(url: message.user.avatarURL) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Rectangle().fill(Color.gray)
+                            }
                         }
                     }
                 }

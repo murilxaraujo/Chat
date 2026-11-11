@@ -160,18 +160,20 @@ struct ChatExampleView: View {
         ToolbarItem(placement: .principal) {
             HStack {
                 if let url = steve.avatarURL {
-                    if url.scheme == "asset", let name = url.host {
-                        Image(name)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } else {
-                                Rectangle().fill(Color(hex: "AFB3B8"))
+                    Group {
+                        if url.scheme == "asset", let name = url.host {
+                            Image(name)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                } else {
+                                    Rectangle().fill(Color(hex: "AFB3B8"))
+                                }
                             }
                         }
                     }
