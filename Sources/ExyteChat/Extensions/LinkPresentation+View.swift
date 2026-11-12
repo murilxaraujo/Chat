@@ -3,8 +3,6 @@ import SwiftUI
 
 /// A SwiftUI link card that uses LinkPresentation for metadata, without embedding LPLinkView.
 struct LinkPreviewView: View {
-    @Environment(\.chatTheme) private var theme
-
     @State private var metadata: LinkPreviewMetadata
     private static let cache = LinkMetadataCache()
 
@@ -65,21 +63,21 @@ struct LinkPreviewView: View {
         HStack(spacing: 10) {
             Image(systemName: "link")
                 .font(.title3)
-                .foregroundStyle(theme.colors.mainTint)
+                .foregroundStyle(.tint)
                 .frame(width: 36, height: 36)
-                .background(theme.colors.mainTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
-                    .foregroundStyle(theme.colors.mainText)
+                    .foregroundStyle(Color.primary)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
                         .lineLimit(1)
-                        .foregroundStyle(theme.colors.mainCaptionText)
+                        .foregroundStyle(Color.secondary)
                 }
             }
 
@@ -87,14 +85,14 @@ struct LinkPreviewView: View {
 
             Image(systemName: "arrow.up.right")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(theme.colors.mainCaptionText)
+                .foregroundStyle(Color.secondary)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.colors.inputBG, in: RoundedRectangle(cornerRadius: 12))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(theme.colors.mainText.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         }
     }
 }

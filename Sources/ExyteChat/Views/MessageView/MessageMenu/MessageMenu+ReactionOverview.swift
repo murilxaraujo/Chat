@@ -160,7 +160,7 @@ struct ReactionOverview: View {
                 ]
             ),
             width: 390,
-            backgroundColor: Color.gray.opacity(0.1),
+            backgroundColor: Color.secondary.opacity(0.1),
             inScrollView: false
         )
 }

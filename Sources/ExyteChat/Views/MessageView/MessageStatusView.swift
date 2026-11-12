@@ -6,7 +6,6 @@ import SwiftUI
 
 struct MessageStatusView: View {
 
-    @Environment(\.chatTheme) private var theme
 
     let status: Message.Status
     let onRetry: () -> Void
@@ -15,27 +14,27 @@ struct MessageStatusView: View {
         Group {
             switch status {
             case .sending:
-                statusImageStyled(image: theme.images.message.sending, color: theme.colors.statusGray)
+                statusImageStyled(image: Image(systemName: "clock"), style: Color.secondary)
             case .sent:
-                statusImageStyled(image: theme.images.message.sent, color: theme.colors.statusGray)
+                statusImageStyled(image: Image(systemName: "checkmark"), style: Color.secondary)
             case .delivered:
-                statusImageStyled(image: theme.images.message.delivered, color: theme.colors.statusGray)
+                statusImageStyled(image: Image(systemName: "checkmark"), style: Color.secondary)
             case .readBy:
-                statusImageStyled(image: theme.images.message.read, color: theme.colors.messageReadStatus)
+                statusImageStyled(image: Image(systemName: "checkmark"), style: AnyShapeStyle(.tint))
             case .error:
                 Button(action: onRetry) {
-                    statusImageStyled(image: theme.images.message.error, color: theme.colors.statusError)
+                    statusImageStyled(image: Image(systemName: "exclamationmark.circle.fill"), style: Color.red)
                 }
             }
         }
     }
 
-    private func statusImageStyled(image: Image, color: Color) -> some View {
+    private func statusImageStyled<S: ShapeStyle>(image: Image, style: S) -> some View {
         image
             .resizable()
             .renderingMode(.template)
             .aspectRatio(contentMode: .fit)
-            .foregroundColor(color)
+            .foregroundStyle(style)
             .frame(width: 40)
     }
 }

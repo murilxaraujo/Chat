@@ -99,9 +99,6 @@ extension MessageView {
 }
 
 struct ReactionBubble: View {
-    
-    @Environment(\.chatTheme) var theme
-    
     let reaction: Reaction
     let font: Font
 
@@ -109,12 +106,14 @@ struct ReactionBubble: View {
 
     @State private var phase = 0.0
     
-    var fillColor: Color {
+    var fillStyle: AnyShapeStyle {
         switch reaction.status {
         case .sending, .sent, .read:
-            return reaction.user.isCurrentUser ? theme.colors.messageMyBG : theme.colors.messageFriendBG
+            return reaction.user.isCurrentUser
+                ? AnyShapeStyle(.tint.opacity(0.15))
+                : AnyShapeStyle(Color.secondary.opacity(0.12))
         case .error:
-            return .red
+            return AnyShapeStyle(.red)
         }
     }
     
@@ -131,17 +130,17 @@ struct ReactionBubble: View {
         Text(reaction.emoji ?? "?")
             .font(font)
             .opacity(opacity)
-            .foregroundStyle(theme.colors.messageText(reaction.user.type))
+            .foregroundStyle(.primary)
             .padding(ReactionBubble.padding)
             .background(
                 ZStack {
                     Circle()
-                        .fill(fillColor)
+                        .fill(fillStyle)
                     // If the reaction is in flight, animate the stroke
                     if reaction.status == .sending {
                         Circle()
                             .stroke(style: .init(lineWidth: 2, lineCap: .round, dash: [100, 50], dashPhase: phase))
-                            .fill(theme.colors.messageFriendBG)
+                            .fill(Color.secondary.opacity(0.12))
                             .onAppear {
                                 withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: false)) {
                                     phase -= 150
@@ -151,7 +150,7 @@ struct ReactionBubble: View {
                     } else {
                         Circle()
                             .stroke(style: .init(lineWidth: 2))
-                            .fill(theme.colors.mainBG)
+                            .fill(.background)
                     }
                 }
             )

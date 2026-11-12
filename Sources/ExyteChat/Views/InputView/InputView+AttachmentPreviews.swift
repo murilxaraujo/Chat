@@ -24,23 +24,23 @@ extension InputView {
         if let message = viewModel.attachments.replyMessage {
             VStack(spacing: 8) {
                 Rectangle()
-                    .foregroundColor(theme.colors.messageFriendBG)
+                    .foregroundColor(Color.secondary.opacity(0.12))
                     .frame(height: 2)
 
                 HStack {
-                    theme.images.reply.replyToMessage
+                    Image(systemName: "arrow.uturn.left")
                     Capsule()
-                        .foregroundColor(theme.colors.messageMyBG)
+                        .foregroundStyle(.tint)
                         .frame(width: 2)
                     VStack(alignment: .leading) {
                         Text(localization.replyToText + " " + message.user.name)
                             .font(.caption2)
-                            .foregroundColor(theme.colors.mainCaptionText)
+                            .foregroundColor(Color.secondary)
                         if !message.attributedText.characters.isEmpty {
                             Text(message.attributedText)
                                 .font(.caption2)
                                 .lineLimit(1)
-                                .foregroundColor(theme.colors.mainText)
+                                .foregroundColor(Color.primary)
                         }
                     }
                     .padding(.vertical, 2)
@@ -55,12 +55,12 @@ extension InputView {
                     }
 
                     if let _ = message.recording {
-                        theme.images.inputView.microphone
+                        Image(systemName: "mic.fill")
                             .renderingMode(.template)
-                            .foregroundColor(theme.colors.mainTint)
+                            .foregroundStyle(.tint)
                     }
 
-                    theme.images.reply.cancelReply
+                    Image(systemName: "xmark")
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 viewModel.attachments.replyMessage = nil
@@ -109,13 +109,13 @@ extension InputView {
 
     func staticLocationAttachmentPreview(_ staticLocation: StaticLocation) -> some View {
         HStack(spacing: 8) {
-            theme.images.attachMenu.location
+            Image(systemName: "location.fill")
                 .renderingMode(.template)
-                .foregroundColor(theme.colors.mainText)
+                .foregroundColor(Color.primary)
 
             Text(String(format: "%.4f, %.4f", staticLocation.latitude, staticLocation.longitude))
                 .font(.caption)
-                .foregroundColor(theme.colors.mainText)
+                .foregroundColor(Color.primary)
                 .lineLimit(1)
 
             Spacer()
@@ -125,8 +125,9 @@ extension InputView {
                     viewModel.attachments.staticLocation = nil
                 }
             } label: {
-                theme.images.message.cancel
-                    .sizeAndColor(10, .white)
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white)
                     .padding(4)
                     .background(Circle().fill(Color.black.opacity(0.6)))
             }
@@ -137,13 +138,13 @@ extension InputView {
 
     func liveLocationAttachmentPreview(_ liveLocation: LiveLocation) -> some View {
         HStack(spacing: 8) {
-            theme.images.attachMenu.location
+            Image(systemName: "location.fill")
                 .renderingMode(.template)
-                .foregroundColor(theme.colors.mainTint)
+                .foregroundStyle(.tint)
 
             Text(localization.liveLocationText)
                 .font(.caption.weight(.semibold))
-                .foregroundColor(theme.colors.mainTint)
+                .foregroundStyle(.tint)
                 .lineLimit(1)
 
             Spacer()
@@ -153,8 +154,9 @@ extension InputView {
                     viewModel.attachments.liveLocation = nil
                 }
             } label: {
-                theme.images.message.cancel
-                    .sizeAndColor(10, .white)
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white)
                     .padding(4)
                     .background(Circle().fill(Color.black.opacity(0.6)))
             }
@@ -167,7 +169,6 @@ extension InputView {
 // MARK: - Thumbnail views
 
 private struct RemovableAttachmentThumbnail<Content: View>: View {
-    @Environment(\.chatTheme) var theme
     @Environment(\.chatSize) var chatSize
 
     var onRemove: () -> Void
@@ -183,8 +184,9 @@ private struct RemovableAttachmentThumbnail<Content: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(alignment: .topTrailing) {
                 Button(action: onRemove) {
-                    theme.images.message.cancel
-                        .sizeAndColor(10, .white)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.white)
                         .padding(4)
                         .background(Circle().fill(Color.black.opacity(0.6)))
                 }
@@ -194,7 +196,6 @@ private struct RemovableAttachmentThumbnail<Content: View>: View {
 }
 
 private struct MediaAttachmentThumbnail: View {
-    @Environment(\.chatTheme) var theme
 
     var media: DraftMedia
     var onRemove: () -> Void
@@ -209,7 +210,7 @@ private struct MediaAttachmentThumbnail: View {
                             .scaledToFill()
                     } else {
                         Rectangle()
-                            .fill(theme.colors.messageFriendBG)
+                            .fill(Color.secondary.opacity(0.12))
                     }
                 }
                 
@@ -224,7 +225,6 @@ private struct MediaAttachmentThumbnail: View {
 }
 
 private struct DocumentAttachmentThumbnail: View {
-    @Environment(\.chatTheme) var theme
 
     var document: DocumentItem
     var onRemove: () -> Void
@@ -232,7 +232,7 @@ private struct DocumentAttachmentThumbnail: View {
     var body: some View {
         RemovableAttachmentThumbnail(onRemove: onRemove) {
             VStack(spacing: 4) {
-                theme.images.message.attachedDocument
+                Image(systemName: "doc.fill")
                     .resizable()
                     .scaledToFit()
                     .viewSize(28)
@@ -241,11 +241,11 @@ private struct DocumentAttachmentThumbnail: View {
                     .font(.caption2)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
-                    .foregroundColor(theme.colors.mainText)
+                    .foregroundColor(Color.primary)
                     .padding(.horizontal, 4)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(theme.colors.messageFriendBG)
+            .background(Color.secondary.opacity(0.12))
         }
     }
 }

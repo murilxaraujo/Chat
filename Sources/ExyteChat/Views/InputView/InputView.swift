@@ -9,7 +9,6 @@ import SwiftUI
 
 struct InputView: View {
 
-    @Environment(\.chatTheme) var theme
     @Environment(\.chatSize) var chatSize
 
     @EnvironmentObject var keyboardState: KeyboardState
@@ -35,7 +34,6 @@ struct InputView: View {
     @State var dragStart: Date?
     @State var tapDelayTimer: Timer?
     @State var cancelGesture = false
-    @State var isAttachMenuPresented = false
 
     var onAction: (InputViewAction) -> Void {
         viewModel.inputViewAction()
@@ -59,7 +57,7 @@ struct InputView: View {
                 }
                 .background {
                     RoundedRectangle(cornerRadius: 18)
-                        .fill(style == .message ? theme.colors.inputBG : theme.colors.inputSignatureBG)
+                        .fill(.regularMaterial)
                 }
                 .frameGetter($inputBarFrame)
 
@@ -67,7 +65,6 @@ struct InputView: View {
             }
             .padding(MessageView.horizontalScreenEdgePadding, 8)
         }
-        .background(backgroundColor)
         .onAppear {
             viewModel.recordingPlayer = recordingPlayer
             viewModel.setRecorderSettings(recorderSettings: recorderSettings)
@@ -141,7 +138,7 @@ struct InputView: View {
             ProgressView()
                 .tint(.white)
                 .viewSize(48)
-                .circleBackground(theme.colors.sendButtonBackground)
+                .background(.tint, in: Circle())
         } else if state == .editing {
             editingButtons
                 .frame(height: 48)
@@ -189,20 +186,22 @@ struct InputView: View {
         Button {
             onAction(.send)
         } label: {
-            theme.images.inputView.arrowSend
-                .viewSize(48)
-                .circleBackground(theme.colors.sendButtonBackground)
+            Image(systemName: "paperplane.fill")
+                .font(.system(size: 18, weight: .semibold))
         }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
+        .frame(width: 48, height: 48)
     }
 
     var addButton: some View {
         Button {
             onAction(.add)
         } label: {
-            theme.images.inputView.add
-                .viewSize(24)
-                .circleBackground(theme.colors.sendButtonBackground)
-                .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 8))
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .medium))
+                .frame(width: 44, height: 48)
         }
     }
 
@@ -210,18 +209,10 @@ struct InputView: View {
         Button {
             viewModel.text = ""
         } label: {
-            theme.images.inputView.clearText
-                .sizeAndColor(18, theme.colors.mainText.opacity(0.6))
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.secondary)
                 .padding(EdgeInsets(top: 12, leading: 8, bottom: 12, trailing: 12))
-        }
-    }
-
-    var backgroundColor: Color {
-        switch style {
-        case .message:
-            return theme.contentBG
-        case .signature:
-            return theme.colors.inputSignatureBG
         }
     }
 
@@ -275,7 +266,7 @@ private struct InputViewPreviewHost: View {
             )
         }
         .frame(width: previewSize.width, height: previewSize.height)
-        .background(Color.gray.opacity(0.08))
+        .background(Color.secondary.opacity(0.08))
         .environment(\.chatSize, previewSize)
         .environmentObject(keyboardState)
         .environmentObject(globalFocusState)

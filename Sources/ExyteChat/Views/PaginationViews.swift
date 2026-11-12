@@ -56,7 +56,6 @@ struct FooterView<TopContent: View>: View {
 
 public struct DefaultActivityIndicator: View {
 
-    @Environment(\.chatTheme) var theme
     var size: CGFloat
     var color: Color?
 
@@ -67,7 +66,7 @@ public struct DefaultActivityIndicator: View {
 
     public var body: some View {
         ProgressView()
-            .tint(color ?? theme.colors.sendButtonBackground)
+            .tint(color)
             .frame(width: size, height: size)
             .padding(.vertical, 10)
     }

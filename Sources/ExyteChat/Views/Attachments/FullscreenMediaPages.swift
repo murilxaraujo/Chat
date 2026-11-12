@@ -7,8 +7,6 @@ import SwiftUI
 
 struct FullscreenMediaPages: View {
 
-    @Environment(\.chatTheme) private var theme
-
     @StateObject var viewModel: FullscreenMediaPagesViewModel
     var showShareButton: Bool = true
     var onClose: () -> Void
@@ -18,7 +16,7 @@ struct FullscreenMediaPages: View {
     @State private var showMinis = true
 
     private var tintColor: Color {
-        theme.colors.mainText
+        .primary
     }
 
     var body: some View {
@@ -34,7 +32,7 @@ struct FullscreenMediaPages: View {
             }
         }
         .background {
-            theme.colors.mainBG.ignoresSafeArea()
+            Rectangle().fill(.background).ignoresSafeArea()
         }
         .sheet(item: $shareItem) { item in
             ShareSheet(activityItems: [item.url])
@@ -45,7 +43,7 @@ struct FullscreenMediaPages: View {
         ZStack {
             HStack {
                 Button(action: onClose) {
-                    theme.images.message.cancel
+                    Image(systemName: "xmark.circle.fill")
                         .imageScale(.large)
                         .padding(5)
                 }
@@ -62,7 +60,7 @@ struct FullscreenMediaPages: View {
                                 .viewSize(24)
                                 .padding(5)
                         } else {
-                            controlIcon(theme.images.fullscreenMedia.share) {
+                            controlIcon(Image(systemName: "square.and.arrow.up")) {
                                 shareCurrentAttachment()
                             }
                         }
@@ -153,7 +151,7 @@ struct FullscreenMediaPages: View {
                             .overlay {
                                 if viewModel.index == index {
                                     RoundedRectangle(cornerRadius: 4)
-                                        .stroke(theme.colors.sendButtonBackground, lineWidth: 2)
+                                        .stroke(.tint, lineWidth: 2)
                                 }
                             }
                             .padding(.vertical, 1)

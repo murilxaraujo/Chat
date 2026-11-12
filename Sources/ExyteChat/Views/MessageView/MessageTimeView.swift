@@ -5,40 +5,37 @@
 import SwiftUI
 
 struct MessageTimeView: View {
-    @Environment(\.chatTheme) var theme
 
     let text: String
-    let userType: UserType
 
     var body: some View {
         Text(text)
-            .foregroundColor(theme.colors.messageTimeText(userType))
+            .foregroundStyle(.secondary)
     }
 }
 
 struct MessageTimeWithCapsuleView: View {
     let text: String
-    let isCurrentUser: Bool
 
     var body: some View {
         Text(text)
-            .foregroundColor(.white)
+            .foregroundStyle(.primary)
             .opacity(0.8)
             .padding(.top, 4)
             .padding(.bottom, 4)
             .padding(.horizontal, 8)
             .background {
                 Capsule()
-                    .foregroundColor(.black.opacity(0.4))
+                    .fill(.ultraThinMaterial)
             }
     }
 }
 
 #Preview("Message timestamps") {
     VStack(alignment: .leading, spacing: 12) {
-        MessageTimeView(text: "9:41 AM", userType: .other)
-        MessageTimeWithCapsuleView(text: "9:41 AM", isCurrentUser: true)
+        MessageTimeView(text: "9:41 AM")
+        MessageTimeWithCapsuleView(text: "9:41 AM")
     }
     .padding()
-    .background(Color.gray.opacity(0.12))
+    .background(.background)
 }

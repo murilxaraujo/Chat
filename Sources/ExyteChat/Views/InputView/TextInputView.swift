@@ -6,7 +6,6 @@ import SwiftUI
 
 struct TextInputView: View {
     
-    @Environment(\.chatTheme) private var theme
     
     @EnvironmentObject private var globalFocusState: GlobalFocusState
     
@@ -18,9 +17,9 @@ struct TextInputView: View {
     
     var body: some View {
         TextField("", text: $text, prompt: Text(style == .message ? localization.inputPlaceholder : localization.signatureText)
-            .foregroundColor(style == .message ? theme.colors.inputPlaceholderText : theme.colors.inputSignaturePlaceholderText), axis: .vertical)
+            .foregroundColor(style == .message ? Color.secondary : Color.secondary), axis: .vertical)
             .customFocus($globalFocusState.focus, equals: .uuid(inputFieldId))
-            .foregroundColor(style == .message ? theme.colors.inputText : theme.colors.inputSignatureText)
+            .foregroundColor(style == .message ? Color.primary : Color.primary)
             .padding(.vertical, 10)
             .padding(.leading, !isAttachmentsAvailable() ? 12 : 0)
             .simultaneousGesture(

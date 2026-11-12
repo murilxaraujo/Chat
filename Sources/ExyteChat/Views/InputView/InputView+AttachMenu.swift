@@ -6,7 +6,7 @@
 import SwiftUI
 
 private struct AttachMenuItem {
-    let icon: Image
+    let systemImage: String
     let title: String
     let action: InputViewAction
 }
@@ -16,14 +16,14 @@ extension InputView {
     fileprivate var attachMenuItems: [AttachMenuItem] {
         var items: [AttachMenuItem] = []
         if isMediaAvailable() {
-            items.append(AttachMenuItem(icon: theme.images.inputView.attach, title: localization.attachMediaText, action: .photo))
-            items.append(AttachMenuItem(icon: theme.images.inputView.attachCamera, title: localization.attachCameraText, action: .camera))
+            items.append(AttachMenuItem(systemImage: "photo", title: localization.attachMediaText, action: .photo))
+            items.append(AttachMenuItem(systemImage: "camera", title: localization.attachCameraText, action: .camera))
         }
         if isDocumentAvailable() {
-            items.append(AttachMenuItem(icon: theme.images.attachMenu.document, title: localization.attachDocumentText, action: .document))
+            items.append(AttachMenuItem(systemImage: "doc", title: localization.attachDocumentText, action: .document))
         }
         if isLocationAvailable() {
-            items.append(AttachMenuItem(icon: theme.images.attachMenu.location, title: localization.attachLocationText, action: .location))
+            items.append(AttachMenuItem(systemImage: "location.fill", title: localization.attachLocationText, action: .location))
         }
         return items
     }
@@ -35,60 +35,27 @@ extension InputView {
         if items.count > 1 {
             attachMenuButton(items: items)
         } else if let item = items.first, item.action == .photo {
-            menuButton(action: .photo, image: theme.images.inputView.attach)
+            menuButton(action: .photo, image: Image(systemName: "paperclip"))
         } else if let item = items.first, item.action == .document {
-            menuButton(action: .document, image: theme.images.attachMenu.document)
+            menuButton(action: .document, image: Image(systemName: "doc"))
         } else if let item = items.first, item.action == .location {
-            menuButton(action: .location, image: theme.images.attachMenu.location)
+            menuButton(action: .location, image: Image(systemName: "location.fill"))
         }
-    }
-
-    fileprivate func attachMenuContent(_ items: [AttachMenuItem]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                AttachMenuRow(icon: item.icon, title: item.title) {
-                    onAction(item.action)
-                    isAttachMenuPresented = false
-                }
-            }
-        }
-        .frame(minWidth: 220, alignment: .leading)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.colors.inputBG)
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
-        )
     }
 
     fileprivate func attachMenuButton(items: [AttachMenuItem]) -> some View {
-        Button {
-            openAttachMenu()
+        Menu {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                Button {
+                    onAction(item.action)
+                } label: {
+                    Label(item.title, systemImage: item.systemImage)
+                }
+            }
         } label: {
-            theme.images.inputView.attach
+            Image(systemName: "paperclip")
                 .viewSize(24)
                 .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 6))
-        }
-        .popover(
-            isPresented: $isAttachMenuPresented,
-            attachmentAnchor: .rect(.bounds),
-            arrowEdge: .bottom
-        ) {
-            attachMenuContent(items)
-                .presentationCompactAdaptation(.popover)
-        }
-    }
-
-    fileprivate func openAttachMenu() {
-        guard keyboardState.isShown else {
-            isAttachMenuPresented = true
-            return
-        }
-
-        keyboardState.dismissKeyboard()
-        Task { @MainActor in
-            await Task.yield()
-            isAttachMenuPresented = true
         }
     }
 
@@ -100,30 +67,5 @@ extension InputView {
                 .viewSize(24)
                 .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 6))
         }
-    }
-}
-
-private struct AttachMenuRow: View {
-    @Environment(\.chatTheme) var theme
-
-    let icon: Image
-    let title: String
-    let action: () -> Void
-
-    var body: some View {
-        Button {
-            action()
-        } label: {
-            HStack(spacing: 10) {
-                icon
-                    .sizeAndColor(20, theme.colors.mainTint)
-                Text(title)
-                    .font(.callout)
-                    .foregroundColor(theme.colors.mainText)
-            }
-            .padding(14, 10)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }

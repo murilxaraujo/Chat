@@ -9,7 +9,6 @@ import SwiftUI
 
 struct RecordWaveformWithButtons: View {
 
-    @Environment(\.chatTheme) private var theme
 
     @ObservedObject var recordPlayer: RecordingPlayer
 
@@ -20,8 +19,7 @@ struct RecordWaveformWithButtons: View {
 
     var recording: Recording
 
-    var colorButton: Color
-    var colorButtonBg: Color
+    var isCurrentUser: Bool
     var colorWaveform: Color
 
     var isPlaying: Bool {
@@ -37,16 +35,21 @@ struct RecordWaveformWithButtons: View {
         HStack(spacing: 12) {
             Group {
                 if isPlaying {
-                    theme.images.message.pauseAudio
+                    Image(systemName: "pause.fill")
                         .renderingMode(.template)
                 } else {
-                    theme.images.message.playAudio
+                    Image(systemName: "play.fill")
                         .renderingMode(.template)
                 }
             }
-            .foregroundColor(colorButton)
+            .foregroundStyle(isCurrentUser ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
             .viewSize(40)
-            .circleBackground(colorButtonBg)
+            .background(
+                isCurrentUser
+                    ? AnyShapeStyle(.tint.opacity(0.12))
+                    : AnyShapeStyle(Color.secondary.opacity(0.12)),
+                in: Circle()
+            )
             .onTapGesture {
                 Task {
                     await recordPlayer.togglePlay(recording)

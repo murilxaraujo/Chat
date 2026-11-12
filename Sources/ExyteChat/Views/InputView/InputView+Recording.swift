@@ -15,7 +15,7 @@ extension InputView {
             if [.isRecordingTap, .isRecordingHold].contains(state) {
                 RecordIndicator()
                     .viewSize(80)
-                    .foregroundColor(theme.colors.sendButtonBackground)
+                    .foregroundStyle(.tint)
             }
 
             Group {
@@ -48,7 +48,7 @@ extension InputView {
             if state == .isRecordingTap {
                 RecordIndicator()
                     .viewSize(80)
-                    .foregroundColor(theme.colors.sendButtonBackground)
+                    .foregroundStyle(.tint)
             }
 
             if state == .isRecordingTap {
@@ -67,9 +67,11 @@ extension InputView {
     }
 
     var recordButton: some View {
-        theme.images.inputView.microphone
-            .viewSize(48)
-            .circleBackground(theme.colors.sendButtonBackground)
+        Image(systemName: "mic.fill")
+            .font(.system(size: 20, weight: .medium))
+            .frame(width: 48, height: 48)
+            .foregroundStyle(.white)
+            .background(.tint, in: Circle())
             .frameGetter($recordButtonFrame)
     }
 
@@ -77,7 +79,7 @@ extension InputView {
         Button {
             onAction(.deleteRecord)
         } label: {
-            theme.images.recordAudio.deleteRecord
+            Image(systemName: "trash")
                 .viewSize(24)
                 .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 8))
         }
@@ -88,7 +90,7 @@ extension InputView {
         Button {
             onAction(.stopRecordAudio)
         } label: {
-            theme.images.recordAudio.stopRecord
+            Image(systemName: "stop.fill")
                 .viewSize(28)
                 .background(
                     Capsule()
@@ -103,8 +105,8 @@ extension InputView {
             onAction(.recordAudioLock)
         } label: {
             VStack(spacing: 20) {
-                theme.images.recordAudio.lockRecord
-                theme.images.recordAudio.sendRecord
+                Image(systemName: "lock.fill")
+                Image(systemName: "paperplane.fill")
             }
             .frame(width: 28)
             .padding(.vertical, 16)
@@ -124,12 +126,12 @@ extension InputView {
                 onAction(.deleteRecord)
             } label: {
                 HStack {
-                    theme.images.recordAudio.cancelRecord
+                    Image(systemName: "xmark")
                         .renderingMode(.template)
-                        .foregroundStyle(theme.colors.mainText)
+                        .foregroundStyle(Color.primary)
                     Text(localization.cancelButtonText)
                         .font(.footnote)
-                        .foregroundColor(theme.colors.mainText)
+                        .foregroundColor(Color.primary)
                 }
             }
             Spacer()
@@ -141,7 +143,7 @@ extension InputView {
             Spacer()
             Text(localization.recordingText)
                 .font(.footnote)
-                .foregroundColor(theme.colors.mainText)
+                .foregroundColor(Color.primary)
             Spacer()
         }
     }
@@ -149,7 +151,7 @@ extension InputView {
     var recordDurationInProcess: some View {
         HStack {
             Circle()
-                .foregroundColor(theme.colors.recordDot)
+                .foregroundColor(Color.red)
                 .viewSize(6)
             recordDuration
         }
@@ -157,7 +159,7 @@ extension InputView {
 
     var recordDuration: some View {
         Text(DateFormatter.timeString(Int(viewModel.attachments.recording?.duration ?? 0)))
-            .foregroundColor(theme.colors.mainText)
+            .foregroundColor(Color.primary)
             .opacity(0.6)
             .font(.caption2)
             .monospacedDigit()
@@ -166,7 +168,7 @@ extension InputView {
 
     var recordDurationLeft: some View {
         Text(DateFormatter.timeString(Int(recordingPlayer.secondsLeft)))
-            .foregroundColor(theme.colors.mainText)
+            .foregroundColor(Color.primary)
             .opacity(0.6)
             .font(.caption2)
             .monospacedDigit()
@@ -177,7 +179,7 @@ extension InputView {
         Button {
             onAction(.playRecord)
         } label: {
-            theme.images.recordAudio.playRecord
+            Image(systemName: "play.fill")
         }
     }
 
@@ -185,7 +187,7 @@ extension InputView {
         Button {
             onAction(.pauseRecord)
         } label: {
-            theme.images.recordAudio.pauseRecord
+            Image(systemName: "pause.fill")
         }
     }
 
@@ -205,7 +207,7 @@ extension InputView {
                 RecordWaveformPlaying(
                     samples: recording.waveformSamples,
                     progress: recordingPlayer.progress,
-                    color: theme.colors.mainText,
+                    color: Color.primary,
                     addExtraDots: true
                 ) { progress in
                     Task {

@@ -18,12 +18,6 @@ extension View {
         self.frame(width: width, height: 1)
     }
 
-    func circleBackground(_ color: Color) -> some View {
-        self.background {
-            Circle().fill(color)
-        }
-    }
-
     func padding(_ horizontal: CGFloat, _ vertical: CGFloat) -> some View {
         self.padding(.horizontal, horizontal)
             .padding(.vertical, vertical)

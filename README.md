@@ -361,42 +361,17 @@ ChatView(messages: viewModel.messages) { draft in
 
 The attach button opens a menu for photos/videos, camera, documents, and locations, depending on the inputs enabled with `setAvailableInputs`. Photos and videos are selected with Apple's `PhotosPicker`, which only grants access to items the user selects and does not require broad Photos library authorization. Camera capture uses AVFoundation and requires `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` entries in the host app's `Info.plist`. Audio recording also requires `NSMicrophoneUsageDescription`. For sandboxed macOS apps, enable Camera and Audio Input access in the host app target's entitlements. Selected files are copied to the app's temporary directory and exposed to the send closure as `DraftMedia` values. Upload or move those files to persistent storage before the app needs to retain a draft across launches. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
 
-### Customize default colors and images
-You can use `chatTheme` to customize colors and images of default UI. You can pass all/some colors and images:
+### Native appearance
+The built-in chat UI uses SwiftUI semantic colors, materials, SF Symbols, and controls. Set the accent with SwiftUI's native tint environment:
 
 ```swift
-.chatTheme(
-    ChatTheme(
-        colors: .init(
-            mainBackground: .red,
-            buttonBackground: .yellow,
-            addButtonBackground: .purple
-        ),
-        images: .init(
-            camera: Image(systemName: "camera")
-        )
-    )
-)
-
-// chat view with a full background image  
-.chatTheme(
-    ChatTheme(
-        colors: .init(
-            buttonBackground: .yellow,
-            addButtonBackground: .purple
-        ),
-        images: .init(
-            background: ChatTheme.Images.Background(
-                portraitBackgroundLight: Image("chatBackgroundLight"),
-                portraitBackgroundDark: Image("chatBackgroundDark"),
-                landscapeBackgroundLight: Image("chatBackgroundLandscapeLight"),
-                landscapeBackgroundDark: Image("chatBackgroundLandscapeDark")
-            )
-    )
-)
-
+ChatView(messages: messages) { draft in
+    send(draft)
+}
+.tint(.indigo)
 ```
-The native photo and camera interfaces use the system appearance. The attachment preview strip and chat input continue to use the colors from `chatTheme`.
+
+The chat adapts to the system color scheme. Use `.preferredColorScheme(_:)` when the host app needs to select an appearance. Use the corresponding view builder to customize messages, input, or avatars. The attachment menu uses the native `Menu` control, and the system photo and camera interfaces keep their system appearance.
   
 <img src="https://raw.githubusercontent.com/exyte/media/master/Chat/pic2.png" width="300">
 

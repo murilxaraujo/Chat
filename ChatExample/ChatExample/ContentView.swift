@@ -7,7 +7,6 @@ import ExyteChat
 
 struct ContentView: View {
     
-    @State private var theme: ExampleThemeState = .accent
     @State private var color = Color(.exampleBlue)
     @State private var selectedExample: ExampleDestination?
     
@@ -80,42 +79,22 @@ struct ContentView: View {
     }
 
     private var themeControls: some View {
-        HStack {
-            Button(theme.title) {
-                theme = theme.next()
-            }
-            ColorPicker("", selection: $color)
-                .labelsHidden()
-        }
-        .fixedSize()
+        ColorPicker("Accent color", selection: $color)
+            .labelsHidden()
     }
 
     @ViewBuilder
     private func exampleView(for destination: ExampleDestination) -> some View {
         switch destination {
         case .activeChat:
-            if theme.isAccent {
-                ActiveChatExampleView()
-                    .chatTheme(accentColor: color, images: theme.images)
-            } else {
-                ActiveChatExampleView()
-                    .chatTheme(themeColor: color)
-            }
+            ActiveChatExampleView()
+                .tint(color)
         case .simpleChat:
-            if theme.isAccent {
-                ChatExampleView()
-                    .chatTheme(accentColor: color, images: theme.images)
-            } else {
-                ChatExampleView()
-                    .chatTheme(themeColor: color)
-            }
+            ChatExampleView()
+                .tint(color)
         case .comments:
             CommentsExampleView()
-                .chatTheme(.init(colors: .init(
-                    inputSignatureBG: .white.opacity(0.5),
-                    inputSignatureText: .black,
-                    inputSignaturePlaceholderText: .black.opacity(0.7)
-                )))
+                .tint(color)
         }
     }
 }
@@ -124,45 +103,4 @@ private enum ExampleDestination: Hashable {
     case activeChat
     case simpleChat
     case comments
-}
-
-/// An enum that lets us iterate through the different ChatTheme styles
-enum ExampleThemeState: String {
-    case accent
-    case image
-    case themed
-    
-    var title:String {
-        self.rawValue.capitalized
-    }
-    
-    func next() -> ExampleThemeState {
-        switch self {
-        case .accent:
-            return .themed
-        case .themed:
-            return .image
-        case .image:
-            return .accent
-        }
-    }
-    
-    var images: ChatTheme.Images {
-        switch self {
-        case .accent, .themed: return .init()
-        case .image:
-            return .init(
-                background: ChatTheme.Images.Background(
-                    portraitBackgroundLight: Image("chatBackgroundLight"),
-                    portraitBackgroundDark: Image("chatBackgroundDark"),
-                    landscapeBackgroundLight: Image("chatBackgroundLandscapeLight"),
-                    landscapeBackgroundDark: Image("chatBackgroundLandscapeDark")
-                )
-            )
-        }
-    }
-    
-    var isAccent: Bool {
-        self != .themed
-    }
 }

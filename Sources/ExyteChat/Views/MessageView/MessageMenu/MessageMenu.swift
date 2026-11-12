@@ -21,7 +21,6 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
         var didReact: (ReactionType?) -> ()
     }
 
-    @Environment(\.chatTheme) private var theme
     @Environment(\.dismiss) var dismiss
     @Environment(\.chatSize) private var chatSize
     @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
@@ -157,7 +156,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             
             // Reaction Overview Rectangle
             if reactionOverviewIsVisible, case .vStack = messageMenuStyle {
-                ReactionOverview(viewModel: viewModel, message: message, width: reactionOverviewWidth, backgroundColor: theme.colors.messageFriendBG, inScrollView: false)
+                ReactionOverview(viewModel: viewModel, message: message, width: reactionOverviewWidth, backgroundColor: Color.secondary.opacity(0.12), inScrollView: false)
                     .frame(width: reactionOverviewWidth)
                     .maxHeightGetter($reactionOverviewHeight)
                     .offset(y: safeAreaInsets.top)
@@ -460,7 +459,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     func messageMenuView() -> some View {
         VStack(spacing: verticalSpacing) {
             if reactionOverviewIsVisible, case .scrollView = messageMenuStyle {
-                ReactionOverview(viewModel: viewModel, message: message, width: reactionOverviewWidth, backgroundColor: theme.colors.messageFriendBG, inScrollView: true)
+                ReactionOverview(viewModel: viewModel, message: message, width: reactionOverviewWidth, backgroundColor: Color.secondary.opacity(0.12), inScrollView: true)
                     .frame(width: reactionOverviewWidth)
                     .maxHeightGetter($reactionOverviewHeight)
                     //.offset(y: safeAreaInsets.top)
@@ -471,8 +470,8 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             if reactionSelectionIsVisible {
                 ReactionSelectionView(
                     viewModel: viewModel,
-                    backgroundColor: theme.colors.messageFriendBG,
-                    selectedColor: theme.colors.messageMyBG,
+                    backgroundColor: Color.secondary.opacity(0.12),
+                    selectedColor: AnyShapeStyle(.tint.opacity(0.2)),
                     animation: .bouncy(duration: animationDuration),
                     animationDuration: animationDuration,
                     currentReactions: message.reactions.filter({ $0.user.isCurrentUser }),
@@ -546,11 +545,11 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
 
     @ViewBuilder
     func menuButton(title: String, icon: Image, action: ActionEnum) -> some View {
-        let color: Color = action.isDestructive() ? .red : theme.colors.menuText
+        let color: Color = action.isDestructive() ? .red : Color.primary
 
         HStack(spacing: 0) {
             ZStack {
-                theme.colors.messageFriendBG
+                Color.secondary.opacity(0.12)
                     .cornerRadius(12)
                 HStack {
                     Text(title)
@@ -586,7 +585,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     func deleteMenuButton() -> some View {
         HStack(spacing: 0) {
             ZStack {
-                theme.colors.messageFriendBG
+                Color.secondary.opacity(0.12)
                     .cornerRadius(12)
                 HStack {
                     Text("Delete")

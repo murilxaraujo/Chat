@@ -32,5 +32,5 @@ struct AttachmentUploadStatusCapsuleView: View {
         AttachmentUploadStatusCapsuleView(68)
     }
     .padding()
-    .background(Color.gray.opacity(0.15))
+        .background(.secondary.opacity(0.15))
 }

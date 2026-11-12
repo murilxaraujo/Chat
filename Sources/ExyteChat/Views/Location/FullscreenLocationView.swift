@@ -13,7 +13,6 @@ struct FullscreenLocationView: View {
         case liveLocation(LiveLocation, isMine: Bool)
     }
 
-    @Environment(\.chatTheme) var theme
     @Environment(\.chatLocalization) var localization
 
     var onStopSharing: () -> Void
@@ -52,7 +51,7 @@ struct FullscreenLocationView: View {
                     Image(systemName: "mappin.circle.fill")
                         .resizable()
                         .viewSize(34)
-                        .foregroundStyle(.white, theme.colors.statusError)
+                        .foregroundStyle(.white, Color.red)
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                 }
             }
@@ -69,7 +68,7 @@ struct FullscreenLocationView: View {
                 openInMapsButton
             }
         }
-        .background(theme.colors.mainBG)
+        .background(.background)
     }
 
     private var headerBar: some View {
@@ -106,7 +105,7 @@ struct FullscreenLocationView: View {
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(.white)
                             .padding(14, 8)
-                            .background(Capsule().fill(theme.colors.statusError))
+                            .background(Capsule().fill(Color.red))
                     }
                 }
             }
@@ -129,7 +128,7 @@ struct FullscreenLocationView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(theme.colors.mainTint)
+                .background(.tint)
                 .cornerRadius(12)
         }
         .padding()

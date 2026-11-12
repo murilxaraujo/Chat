@@ -10,7 +10,6 @@ import MapKit
 
 struct MessageView: View {
 
-    @Environment(\.chatTheme) var theme
     @Environment(\.chatSize) var chatSize
     @Environment(\.chatLocalization) var localization
 
@@ -64,11 +63,11 @@ struct MessageView: View {
             VStack(alignment: message.user.isCurrentUser ? .trailing : .leading, spacing: 2) {
                 if !isDisplayingMessageMenu, let reply = message.replyMessage?.toMessage() {
                     replyBubbleView(reply)
-                        .opacity(theme.style.replyOpacity)
+                        .opacity(0.8)
                         .padding(message.user.isCurrentUser ? .trailing : .leading, 10)
                         .overlay(alignment: message.user.isCurrentUser ? .trailing : .leading) {
                             Capsule()
-                                .foregroundColor(theme.colors.mainTint)
+                                .foregroundStyle(.tint)
                                 .frame(width: 2)
                         }
                 }
@@ -143,7 +142,7 @@ struct MessageView: View {
             }
             .padding(.top, (params.showUsername && !message.user.isCurrentUser) || message.attachments.isEmpty ? 8 : 0)
             .padding(.bottom, message.hasText ? 8 : 0)
-            .bubbleBackground(message, params: params, theme: theme)
+            .bubbleBackground(message, params: params)
             .zIndex(0)
         }
         .applyIf(isDisplayingMessageMenu) {
@@ -179,7 +178,7 @@ struct MessageView: View {
         }
         .font(.caption2)
         .padding(.vertical, 8)
-        .bubbleBackground(message, params: params, theme: theme, isReply: true)
+        .bubbleBackground(message, params: params, isReply: true)
     }
 
     @ViewBuilder
@@ -283,7 +282,7 @@ struct MessageView: View {
         Image(systemName: "mappin.circle.fill")
             .resizable()
             .viewSize(30)
-            .foregroundStyle(.white, theme.colors.statusError)
+            .foregroundStyle(.white, Color.red)
             .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
     }
 
@@ -305,7 +304,7 @@ struct MessageView: View {
                 .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
 
             Circle()
-                .fill(theme.colors.mainTint)
+                .fill(.tint)
                 .viewSize(10)
                 .overlay(Circle().stroke(Color.white, lineWidth: 2))
                 .offset(y: -3)
@@ -318,7 +317,7 @@ struct MessageView: View {
             AvatarImageView(url: url, avatarSize: 38)
         } else {
             AvatarNameView(name: message.user.name, avatarSize: 38)
-                .background(theme.colors.mainTint)
+                .background(.tint)
         }
     }
 
@@ -337,7 +336,7 @@ struct MessageView: View {
                 }
             }
             .padding(12, 10)
-            .background(isActive ? theme.colors.mainTint : Color.gray)
+            .background(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
         }
     }
 
@@ -407,11 +406,8 @@ struct MessageView: View {
         RecordWaveformWithButtons(
             recordPlayer: viewModel.messageRecordingPlayer,
             recording: recording,
-            colorButton: message.user.isCurrentUser
-                ? theme.colors.messageMyBG : theme.colors.mainBG,
-            colorButtonBg: message.user.isCurrentUser
-                ? theme.colors.mainBG : theme.colors.messageMyBG,
-            colorWaveform: theme.colors.messageText(message.user.type)
+            isCurrentUser: message.user.isCurrentUser,
+            colorWaveform: .primary
         )
         .padding(.horizontal, MessageView.horizontalTextPadding)
         .padding(.top, 8)
@@ -422,9 +418,9 @@ struct MessageView: View {
         if params.showTimeView {
             Group {
                 if needsCapsule {
-                    MessageTimeWithCapsuleView(text: message.formattedDate, isCurrentUser: message.user.isCurrentUser)
+                    MessageTimeWithCapsuleView(text: message.formattedDate)
                 } else {
-                    MessageTimeView(text: message.formattedDate, userType: message.user.type)
+                    MessageTimeView(text: message.formattedDate)
                 }
             }
             .font(params.timeFont)
@@ -446,19 +442,21 @@ private struct PinTailShape: Shape {
 extension View {
 
     @ViewBuilder
-    func bubbleBackground(_ message: Message, params: MessageCustomizationParameters, theme: ChatTheme, isReply: Bool = false) -> some View {
+    func bubbleBackground(_ message: Message, params: MessageCustomizationParameters, isReply: Bool = false) -> some View {
         let radius: CGFloat = !message.attachments.isEmpty ? 12 : 20
         let additionalMediaInset: CGFloat = message.attachments.count > 1 ? 2 : 0
         self.frame(
             width: message.attachments.isEmpty
             ? nil : MessageView.widthWithMedia + additionalMediaInset
         )
-        .foregroundColor(theme.colors.messageText(message.user.type))
+        .foregroundColor((message.user.isCurrentUser ? Color.white : Color.primary))
         .background {
             if (params.showUsername && !message.user.isCurrentUser) || isReply || message.hasText || message.recording != nil {
                 RoundedRectangle(cornerRadius: radius)
-                    .foregroundColor(theme.colors.messageBG(message.user.type))
-                    .opacity(isReply ? theme.style.replyOpacity : 1)
+                    .fill(message.user.isCurrentUser
+                        ? AnyShapeStyle(.tint.opacity(0.15))
+                        : AnyShapeStyle(Color.secondary.opacity(0.12)))
+                    .opacity(isReply ? 0.8 : 1)
             }
         }
         .cornerRadius(radius)
@@ -618,6 +616,6 @@ extension View {
     }
     .padding(.vertical, 20)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    .background(Color.gray.opacity(0.08))
+    .background(Color.secondary.opacity(0.08))
     .environment(\.chatSize, CGSize(width: 390, height: 844))
 }

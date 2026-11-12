@@ -8,7 +8,6 @@ struct AttachmentsPage: View {
     @Environment(\.openURL) private var openURL
 
     @EnvironmentObject var mediaPagesViewModel: FullscreenMediaPagesViewModel
-    @Environment(\.chatTheme) private var theme
 
     let attachment: Attachment
 
@@ -32,7 +31,7 @@ struct AttachmentsPage: View {
             documentView
         } else {
             Rectangle()
-                .foregroundColor(Color.gray)
+                .foregroundStyle(.secondary.opacity(0.15))
                 .frame(minWidth: 100, minHeight: 100)
                 .frame(maxHeight: 200)
                 .overlay {
@@ -43,11 +42,12 @@ struct AttachmentsPage: View {
 
     private var documentView: some View {
         VStack(spacing: 16) {
-            theme.images.message.attachedDocument
-                .sizeAndColor(64, theme.colors.mainTint)
+            Image(systemName: "doc.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
 
             Text(attachment.fileName ?? attachment.full.lastPathComponent)
-                .foregroundColor(theme.colors.mainText)
+                .foregroundColor(Color.primary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
 
@@ -56,8 +56,8 @@ struct AttachmentsPage: View {
             } label: {
                 Text("Open", bundle: .module)
                     .padding(20, 10)
-                    .background(Capsule().fill(theme.colors.mainText.opacity(0.15)))
-                    .foregroundColor(theme.colors.mainText)
+                    .background(Capsule().fill(Color.primary.opacity(0.15)))
+                    .foregroundColor(Color.primary)
             }
         }
     }

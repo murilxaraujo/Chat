@@ -9,7 +9,6 @@ import Combine
 
 struct LocationPickerView: View {
 
-    @Environment(\.chatTheme) var theme
     @Environment(\.dismiss) var dismiss
 
     @StateObject private var locationManager = LocationManager()
@@ -47,8 +46,8 @@ struct LocationPickerView: View {
                 } label: {
                     Image(systemName: "location.fill")
                         .padding(12)
-                        .background(Circle().fill(theme.colors.inputBG))
-                        .foregroundColor(theme.colors.mainTint)
+                        .background(Circle().fill(.regularMaterial))
+                        .foregroundStyle(.tint)
                 }
                 .padding()
                 .padding(.bottom, 60)
@@ -71,7 +70,7 @@ struct LocationPickerView: View {
                     }
                 }
                 .padding()
-                .background(theme.colors.mainBG)
+                .background(.background)
             }
             .confirmationDialog(localization.shareLiveLocationText, isPresented: $showLiveDurationDialog, titleVisibility: .visible) {
                 ForEach(LiveLocationDuration.allCases) { duration in
@@ -115,17 +114,17 @@ struct LocationPickerView: View {
 
     private func pickerActionButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
         let isDisabled = selectedCoordinate == nil
-        let tint = isDisabled ? Color.gray : (filled ? theme.colors.sendButtonBackground : theme.colors.mainTint)
+        let tint = isDisabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint)
 
         return Button(action: action) {
             Text(title)
                 .font(.headline)
-                .foregroundColor(filled ? .white : tint)
+                .foregroundStyle(isDisabled ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background {
                     if filled {
-                        tint
+                        RoundedRectangle(cornerRadius: 12).fill(tint.opacity(0.15))
                     } else {
                         RoundedRectangle(cornerRadius: 12).stroke(tint, lineWidth: 1)
                     }

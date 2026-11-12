@@ -6,7 +6,6 @@ import SwiftUI
 
 public struct AttachmentCell: View {
 
-    @Environment(\.chatTheme) var theme
 
     let attachment: Attachment
     let size: CGSize
@@ -57,8 +56,9 @@ public struct AttachmentCell: View {
                         case .complete:
                             VStack {
                                 Spacer()
-                                theme.images.message.playVideo
-                                    .sizeAndColor(36, .white)
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 36))
+                                    .foregroundStyle(.white)
                                 Spacer()
                             }
                         case .cancelled:
@@ -69,8 +69,9 @@ public struct AttachmentCell: View {
                     } else {
                         VStack {
                             Spacer()
-                            theme.images.message.playVideo
-                                .sizeAndColor(36, .white)
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.white)
                             Spacer()
                         }
                     }
@@ -91,25 +92,26 @@ public struct AttachmentCell: View {
 
     private var documentContent: some View {
         VStack(spacing: 6) {
-            theme.images.message.attachedDocument
-                .sizeAndColor(32, theme.colors.mainTint)
+            Image(systemName: "doc.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.tint)
 
             Text(attachment.fileName ?? attachment.full.lastPathComponent)
                 .font(.caption2)
-                .foregroundColor(theme.colors.messageFriendText)
+                .foregroundColor(Color.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.colors.messageFriendBG)
+        .background(Color.secondary.opacity(0.12))
     }
 
     @ViewBuilder
     private func uploadingOverlay(percent: Int?) -> some View {
         Color.white.opacity(0.8)
         if showCancel {
-            theme.images.message.cancel
+            Image(systemName: "xmark.circle.fill")
                 .resizable()
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, .black.opacity(0.4))
@@ -136,7 +138,7 @@ public struct AttachmentCell: View {
         VStack {
             HStack {
                 Spacer()
-                theme.images.message.cancel
+                Image(systemName: "xmark.circle.fill")
                     .resizable()
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.white, .black.opacity(0.4))
@@ -153,7 +155,7 @@ public struct AttachmentCell: View {
         VStack {
             HStack {
                 Spacer()
-                theme.images.message.error
+                Image(systemName: "exclamationmark.circle.fill")
                     .resizable()
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.white, .black.opacity(0.4))
@@ -193,7 +195,6 @@ public struct AttachmentCell: View {
 
 struct AsyncImageView: View {
 
-    @Environment(\.chatTheme) var theme
 
     let attachment: Attachment
     let size: CGSize
@@ -215,7 +216,7 @@ struct AsyncImageView: View {
     private var placeholder: some View {
         ZStack {
             Rectangle()
-                .foregroundColor(theme.colors.inputBG)
+                .foregroundColor(Color.secondary.opacity(0.08))
                 .frame(width: size.width, height: size.height)
             ActivityIndicator(size: 30, showBackground: false)
         }

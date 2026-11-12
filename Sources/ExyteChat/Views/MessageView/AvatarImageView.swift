@@ -16,7 +16,7 @@ struct AvatarImageView: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Rectangle().fill(Color.gray)
+                Rectangle().fill(.secondary.opacity(0.15))
             }
         }
         .viewSize(avatarSize)

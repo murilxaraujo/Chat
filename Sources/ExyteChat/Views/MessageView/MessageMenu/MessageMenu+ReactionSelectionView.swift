@@ -34,7 +34,7 @@ struct ReactionSelectionView: View {
     @State private var bubbleDiameter: CGFloat = .zero
     
     var backgroundColor: Color
-    var selectedColor: Color
+    var selectedColor: AnyShapeStyle
     var animation: Animation
     var animationDuration: Double
     var currentReactions: [Reaction]
@@ -405,8 +405,8 @@ internal struct InteriorRadialShadow: ViewModifier {
     VStack {
         ReactionSelectionView(
             viewModel: ChatViewModel(),
-            backgroundColor: .gray,
-            selectedColor: .blue,
+            backgroundColor: .secondary,
+            selectedColor: AnyShapeStyle(Color.blue.opacity(0.2)),
             animation: .linear(duration: 0.2),
             animationDuration: 0.2,
             currentReactions: [

@@ -8,7 +8,6 @@ import AVKit
 struct VideoView: View {
 
     @EnvironmentObject var mediaPagesViewModel: FullscreenMediaPagesViewModel
-    @Environment(\.chatTheme) private var theme
 
     @StateObject var viewModel: VideoViewModel
 

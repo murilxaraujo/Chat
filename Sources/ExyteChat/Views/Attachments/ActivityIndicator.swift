@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ActivityIndicator: View {
 
-    @Environment(\.chatTheme) var theme
     var size: CGFloat = 50
     var showBackground = true
     var color: Color? = nil
@@ -24,7 +23,7 @@ struct ActivityIndicator: View {
             }
 
             ProgressView()
-                .tint(color ?? theme.colors.sendButtonBackground)
+            .tint(color)
                 .frame(width: size, height: size)
         }
     }

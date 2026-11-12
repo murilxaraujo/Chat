@@ -22,7 +22,6 @@ private struct ScrollMetrics: Equatable {
 struct ChatMessageList<MessageContent: View>: View {
     typealias MessageBuilderParamsClosure = ChatView<MessageContent, InputView, DefaultMessageMenuAction>.MessageBuilderParamsClosure
 
-    @Environment(\.chatTheme) private var theme
 
     @ObservedObject var viewModel: ChatViewModel
     @Binding var pendingScrollTo: ScrollToParams?
@@ -129,7 +128,7 @@ struct ChatMessageList<MessageContent: View>: View {
         .scrollDisabled(!chatParams.isScrollEnabled)
         .scrollDismissesKeyboard(chatParams.keyboardDismissMode)
         .swipeActionsContainer()
-        .background(theme.contentBG)
+        .background(.background)
         .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
             ScrollMetrics(
                 contentOffset: geometry.contentOffset.y,
@@ -186,7 +185,7 @@ struct ChatMessageList<MessageContent: View>: View {
                 .font(.caption2)
                 .padding(.top, 30)
                 .padding(.bottom, 8)
-                .foregroundStyle(.gray)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -206,7 +205,7 @@ struct ChatMessageList<MessageContent: View>: View {
 
             rowContent(row)
                 .background(MessageMenuPreferenceViewSetter(id: row.id))
-                .background(theme.contentBG)
+                .background(.background)
                 .background {
                     GeometryReader { geometry in
                         Color.clear.preference(
@@ -261,7 +260,7 @@ struct ChatMessageList<MessageContent: View>: View {
                 } label: {
                     action.content
                 }
-                .tint(action.background ?? theme.contentBG)
+                .tint(action.background)
             }
         }
     }

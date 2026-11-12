@@ -23,9 +23,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     /// User and MessageId
     public typealias TapAvatarClosure = (User, String) -> ()
     
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.chatTheme) private var theme
-
     // MARK: - Parameters
 
     /// provide custom message view builder
@@ -120,7 +117,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     listWithButton
                 }
             }
-            .background(chatBackground())
+            .background(.background)
             .sizeGetter($chatSize)
             .environment(\.chatSize, chatSize)
             .environment(\.chatLocalization, chatCustomizationParameters.localization)
@@ -264,17 +261,17 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     var waitingForNetwork: some View {
         VStack {
             Rectangle()
-                .foregroundColor(theme.colors.mainText.opacity(0.12))
+                .foregroundColor(Color.primary.opacity(0.12))
                 .frame(height: 1)
             HStack {
                 Spacer()
-                Image("waiting", bundle: .current)
+                Image(systemName: "wifi.slash")
                 Text(chatCustomizationParameters.localization.waitingForNetwork)
                 Spacer()
             }
             .padding(.top, 6)
             Rectangle()
-                .foregroundColor(theme.colors.mainText.opacity(0.12))
+                .foregroundColor(Color.primary.opacity(0.12))
                 .frame(height: 1)
         }
         .padding(.top, 8)
@@ -291,12 +288,13 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     Button {
                         self.pendingScrollTo = ScrollToParams(.newestMessage) // Cannot assign to property: 'self' is immutable
                     } label: {
-                        theme.images.scrollToBottom
-                            .viewSize(40)
-                            .circleBackground(theme.colors.messageFriendBG)
-                            .foregroundStyle(theme.colors.sendButtonBackground)
-                            .shadow(color: .primary.opacity(0.1), radius: 2, y: 1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .semibold))
                     }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    .controlSize(.large)
+                    .shadow(color: .primary.opacity(0.1), radius: 2, y: 1)
                     .padding(.trailing, MessageView.horizontalScreenEdgePadding)
                     .padding(.bottom, 8)
                 }
@@ -487,35 +485,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
         viewModel.messageMenuRow = nil
         viewModel.messageFrame = .zero
         isShowingMenu = false
-    }
-    
-    private func chatBackground() -> some View {
-        Group {
-            if let background = theme.images.background {
-                switch (chatSize.width > chatSize.height, colorScheme) {
-                case (true, .dark):
-                    background.landscapeBackgroundDark
-                        .resizable()
-                        .ignoresSafeArea(background.safeAreaRegions, edges: background.safeAreaEdges)
-                case (true, .light):
-                    background.landscapeBackgroundLight
-                        .resizable()
-                        .ignoresSafeArea(background.safeAreaRegions, edges: background.safeAreaEdges)
-                case (false, .dark):
-                    background.portraitBackgroundDark
-                        .resizable()
-                        .ignoresSafeArea(background.safeAreaRegions, edges: background.safeAreaEdges)
-                case (false, .light):
-                    background.portraitBackgroundLight
-                        .resizable()
-                        .ignoresSafeArea(background.safeAreaRegions, edges: background.safeAreaEdges)
-                default:
-                    theme.colors.mainBG
-                }
-            } else {
-                theme.colors.mainBG
-            }
-        }
     }
     
 }

@@ -10,7 +10,6 @@ import SwiftUI
 @MainActor
 struct MessageTextView: View {
 
-    @Environment(\.chatTheme) private var theme
 
     /// Large enough to show the domain and icon, if needed, for most pages.
     private static let minLinkPreviewWidth: CGFloat = 140
@@ -27,7 +26,7 @@ struct MessageTextView: View {
         if !attributedText.characters.isEmpty {
             VStack(alignment: .leading) {
                 Text(attributedText)
-                    .foregroundStyle(theme.colors.messageText(userType))
+                    .foregroundStyle(.primary)
                     .textSelection(.enabled)
                     .copyable([String(attributedText.characters)])
 
