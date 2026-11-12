@@ -5,13 +5,13 @@
 
 import SwiftUI
 import MapKit
-import Combine
 
 struct LocationPickerView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    @StateObject private var locationManager = LocationManager()
+    @State private var locationManager = LocationManager()
+    @State private var locationRequestID = 0
     @State private var cameraPosition: MapCameraPosition = .region(
         .closeUp(around: CLLocationCoordinate2D(latitude: 0, longitude: 0), delta: 0.05)
     )
@@ -42,7 +42,7 @@ struct LocationPickerView: View {
             .ignoresSafeArea(edges: .bottom)
             .overlay(alignment: .bottomTrailing) {
                 Button {
-                    locationManager.requestStaticLocation()
+                    locationRequestID += 1
                 } label: {
                     Image(systemName: "location.fill")
                         .padding(12)
@@ -101,11 +101,9 @@ struct LocationPickerView: View {
                 }
             }
         }
-        .onAppear {
-            locationManager.requestStaticLocation()
-        }
-        .onReceive(locationManager.$currentLocation.compactMap { $0 }) { newValue in
-            guard !didCenterOnUser else { return }
+        .task(id: locationRequestID) {
+            guard let newValue = await locationManager.requestStaticLocation(),
+                  !Task.isCancelled else { return }
             didCenterOnUser = true
             selectedCoordinate = newValue
             cameraPosition = .region(.closeUp(around: newValue))

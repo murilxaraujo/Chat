@@ -1,49 +1,56 @@
-//
-//  Created by Alex.M on 21.06.2022.
-//
-
-import Foundation
-import Combine
 import AVKit
+import Foundation
+import Observation
 
 // TODO: Create option "download video before playing"
 @MainActor
-final class VideoViewModel: ObservableObject {
+@Observable
+final class VideoViewModel {
+    var attachment: Attachment
+    var player: AVPlayer?
+    var isPlaying = false
+    var isMuted = false
+    var status: AVPlayer.Status = .unknown
 
-    @Published var attachment: Attachment
-    @Published var player: AVPlayer?
-
-    @Published var isPlaying = false
-    @Published var isMuted = false
-
-    private var subscriptions = Set<AnyCancellable>()
-    @Published var status: AVPlayer.Status = .unknown
+    @ObservationIgnored private var currentItem: AVPlayerItem?
+    @ObservationIgnored private var statusObservation: NSKeyValueObservation?
+    @ObservationIgnored private var playbackEndTask: Task<Void, Never>?
 
     init(attachment: Attachment) {
         self.attachment = attachment
     }
 
+    deinit {
+        playbackEndTask?.cancel()
+        statusObservation?.invalidate()
+    }
+
     func onStart() {
         if player == nil {
-            self.player = AVPlayer(url: attachment.full)
-            self.player?.publisher(for: \.status)
-                .receive(on: DispatchQueue.main)
-                .assign(to: &$status)
-
-            NotificationCenter.default.addObserver(
-                forName: AVPlayerItem.didPlayToEndTimeNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.finishVideo()
-                }
+            let item = AVPlayerItem(url: attachment.full)
+            currentItem = item
+            player = AVPlayer(playerItem: item)
+        }
+        guard let player else { return }
+        if playbackEndTask == nil, let currentItem {
+            observePlaybackEnd(of: currentItem)
+        }
+        status = player.status
+        statusObservation?.invalidate()
+        statusObservation = player.observe(\.status, options: [.initial, .new]) { [weak self] player, _ in
+            let status = player.status
+            Task { @MainActor [weak self] in
+                self?.status = status
             }
         }
     }
 
     func onStop() {
         pauseVideo()
+        statusObservation?.invalidate()
+        statusObservation = nil
+        playbackEndTask?.cancel()
+        playbackEndTask = nil
     }
 
     func togglePlay() {
@@ -69,8 +76,22 @@ final class VideoViewModel: ObservableObject {
         isPlaying = player?.isPlaying ?? false
     }
 
-    func finishVideo() {
-        player?.seek(to: CMTime(seconds: 0, preferredTimescale: 10))
+    private func observePlaybackEnd(of item: AVPlayerItem) {
+        playbackEndTask = Task { @MainActor [weak self, item] in
+            let notifications = NotificationCenter.default
+                .notifications(named: AVPlayerItem.didPlayToEndTimeNotification, object: item)
+                .map { _ in () }
+            for await _ in notifications {
+                guard !Task.isCancelled, let self else { return }
+                await self.finishVideo()
+            }
+        }
+    }
+
+    private func finishVideo() async {
+        guard let player else { return }
+        _ = await player.seek(to: .zero)
+        guard !Task.isCancelled else { return }
         isPlaying = false
     }
 }

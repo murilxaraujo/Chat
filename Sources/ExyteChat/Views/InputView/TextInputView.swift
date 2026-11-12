@@ -7,7 +7,7 @@ import SwiftUI
 struct TextInputView: View {
     
     
-    @EnvironmentObject private var globalFocusState: GlobalFocusState
+    @Environment(GlobalFocusState.self) private var globalFocusState
     
     @Binding var text: String
     var inputFieldId: UUID
@@ -16,15 +16,16 @@ struct TextInputView: View {
     var localization: ChatLocalization
     
     var body: some View {
+        @Bindable var focusState = globalFocusState
         TextField("", text: $text, prompt: Text(style == .message ? localization.inputPlaceholder : localization.signatureText)
             .foregroundColor(style == .message ? Color.secondary : Color.secondary), axis: .vertical)
-            .customFocus($globalFocusState.focus, equals: .uuid(inputFieldId))
+            .customFocus($focusState.focus, equals: .uuid(inputFieldId))
             .foregroundColor(style == .message ? Color.primary : Color.primary)
             .padding(.vertical, 10)
             .padding(.leading, !isAttachmentsAvailable() ? 12 : 0)
             .simultaneousGesture(
                 TapGesture().onEnded {
-                    globalFocusState.focus = .uuid(inputFieldId)
+                    focusState.focus = .uuid(inputFieldId)
                 }
             )
     }

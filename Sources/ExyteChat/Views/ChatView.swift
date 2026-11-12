@@ -75,13 +75,16 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
     // MARK: - State
 
-    @StateObject private var viewModel = ChatViewModel()
-    @StateObject private var inputViewModel = InputViewModel()
-    @StateObject private var globalFocusState = GlobalFocusState()
-    @StateObject private var networkMonitor = NetworkMonitor()
+    @State private var viewModel = ChatViewModel()
+    @State private var inputViewModel = InputViewModel()
+    @State private var globalFocusState = GlobalFocusState()
+    @State private var networkMonitor = NetworkMonitor()
     @StateObject private var keyboardState = KeyboardState()
 
     @State private var pendingScrollTo: ScrollToParams?
+    @State private var delayedScrollRequestID = 0
+    @State private var photoImportRequestID = 0
+    @State private var photosToImport: [PhotosPickerItem] = []
     @State private var isScrolledToBottom: Bool = true
 
     @State private var cellFrames = [String: CGRect]()
@@ -122,6 +125,20 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             .environment(\.chatSize, chatSize)
             .environment(\.chatLocalization, chatCustomizationParameters.localization)
             .environment(\.chatSafeAreaInsets, geometry.safeAreaInsets)
+            .environment(globalFocusState)
+            .task {
+                await networkMonitor.monitorConnectivity()
+            }
+            .task(id: delayedScrollRequestID) {
+                guard delayedScrollRequestID > 0 else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(300))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                pendingScrollTo = ScrollToParams(.newestMessage)
+            }
             .environmentObject(keyboardState)
         }
     }
@@ -164,13 +181,20 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 maxSelectionCount: inputViewCustomizationParameters.photoPickerSelectionLimit,
                 selectionBehavior: .ordered,
                 matching: .any(of: [.images, .videos])
+            .task(id: photoImportRequestID) {
+                let requestID = photoImportRequestID
+                let selectedItems = photosToImport
+                guard !selectedItems.isEmpty else { return }
+                await inputViewModel.importSelectedPhotos(selectedItems)
+                guard !Task.isCancelled, requestID == photoImportRequestID else { return }
+                photosToImport = []
+            }
             )
             .onChange(of: inputViewModel.showPhotoPicker) { _, isPresented in
                 guard !isPresented else { return }
-                let selectedItems = inputViewModel.selectedPhotoItems
-                Task {
-                    await inputViewModel.importSelectedPhotos(selectedItems)
-                }
+                photosToImport = inputViewModel.selectedPhotoItems
+                guard !photosToImport.isEmpty else { return }
+                photoImportRequestID += 1
             }
             .adaptiveFullScreenCover(isPresented: $inputViewModel.showCameraPicker) {
                 NativeCameraView(onCapture: { media in
@@ -337,13 +361,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     .onAppear(perform: showMessageMenu)
             }
         }
-        .onPreferenceChange(MessageMenuPreferenceKey.self) { frames in
-            DispatchQueue.main.async {
-                if self.cellFrames != frames {
-                    self.cellFrames = frames
-                }
-            }
-        }
         .simultaneousGesture(
             TapGesture().onEnded {
                 globalFocusState.focus = nil
@@ -362,16 +379,12 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             viewModel.liveLocationBroadcaster.onEvent = chatCustomizationParameters.onLiveLocationBroadcast
 
             inputViewModel.didSendMessage = { value in
-                Task { @MainActor in
-                    didSendMessage(value)
-                }
+                didSendMessage(value)
                 if let id = value.id, let liveLocation = value.liveLocation {
                     viewModel.startLiveLocationSharing(messageId: id, liveLocation: liveLocation)
                 }
                 if type == .conversation {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.pendingScrollTo = ScrollToParams(.newestMessage)
-                    }
+                    delayedScrollRequestID += 1
                 }
             }
         }
@@ -406,9 +419,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     .customFocus($globalFocusState.focus, equals: .uuid(viewModel.inputFieldId))
             }
         }
-        .environmentObject(globalFocusState)
-        .onAppear(perform: inputViewModel.onStart)
-        .onDisappear(perform: inputViewModel.onStop)
+        .environment(globalFocusState)
     }
     
     func messageMenu(_ row: MessageRow) -> some View {
@@ -418,7 +429,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             viewModel: viewModel,
             isShowingMenu: $isShowingMenu,
             message: row.message,
-            cellFrame: cellFrame,
+            cellFrame: viewModel.messageCellFrame,
             alignment: menuAlignment(row.message, chatType: type),
             positionInUserGroup: row.positionInUserGroup,
             leadingPadding: messageCustomizationParameters.avatarSize + MessageView.horizontalScreenEdgePadding + MessageView.horizontalSpacing,
@@ -460,13 +471,9 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     /// Our default reactionCallback flow if the user supports Reactions by implementing the didReactToMessage closure
     private func reactionClosure(_ message: Message) -> (ReactionType?) -> () {
         { reactionType in
-            Task { @MainActor in
-                // Hide the menu
-                hideMessageMenu()
-                // Send the draft reaction
-                guard let reactionDelegate = chatCustomizationParameters.reactionDelegate, let reactionType else { return }
-                reactionDelegate.didReact(to: message, reaction: DraftReaction(messageID: message.id, type: reactionType))
-            }
+            hideMessageMenu()
+            guard let reactionDelegate = chatCustomizationParameters.reactionDelegate, let reactionType else { return }
+            reactionDelegate.didReact(to: message, reaction: DraftReaction(messageID: message.id, type: reactionType))
         }
     }
 
@@ -485,6 +492,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
         viewModel.messageMenuRow = nil
         viewModel.messageFrame = .zero
         isShowingMenu = false
+        viewModel.messageCellFrame = .zero
     }
     
 }

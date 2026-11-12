@@ -1,13 +1,5 @@
 import SwiftUI
 
-private struct MessageFramesPreferenceKey: PreferenceKey {
-    static let defaultValue: [String: CGRect] = [:]
-
-    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
-        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-    }
-}
-
 private struct ScrollMetrics: Equatable {
     var contentOffset: CGFloat = 0
     var contentHeight: CGFloat = 0
@@ -19,11 +11,22 @@ private struct ScrollMetrics: Equatable {
     var distanceFromBottom: CGFloat { max(0, contentHeight - visibleMaxY) }
 }
 
+@MainActor
+private final class MessageListGeometrySnapshot {
+    var scrollMetrics = ScrollMetrics()
+    var adjustmentFrame: CGRect?
+}
+
+private struct MessageRowGeometry: Equatable, Sendable {
+    let globalFrame: CGRect
+    let scrollFrame: CGRect?
+}
+
 struct ChatMessageList<MessageContent: View>: View {
     typealias MessageBuilderParamsClosure = ChatView<MessageContent, InputView, DefaultMessageMenuAction>.MessageBuilderParamsClosure
 
 
-    @ObservedObject var viewModel: ChatViewModel
+    let viewModel: ChatViewModel
     @Binding var pendingScrollTo: ScrollToParams?
     @Binding var isScrolledToBottom: Bool
 
@@ -36,13 +39,12 @@ struct ChatMessageList<MessageContent: View>: View {
     let messageParams: MessageCustomizationParameters
 
     @State private var scrollPosition = ScrollPosition(idType: String.self)
-    @State private var scrollMetrics = ScrollMetrics()
-    @State private var messageFrames: [String: CGRect] = [:]
+    @State private var geometrySnapshot = MessageListGeometrySnapshot()
     @State private var offsetAdjustment: OffsetAdjustment?
-    @StateObject private var paginationState = PaginationState()
+    @State private var paginationState = PaginationState()
     @State private var transaction = ChatUpdateTransaction()
 
-    private struct OffsetAdjustment {
+    private struct OffsetAdjustment: Equatable {
         let messageID: String
         let position: ChatScrollPosition
         let offset: CGFloat
@@ -138,12 +140,15 @@ struct ChatMessageList<MessageContent: View>: View {
                 visibleMaxY: geometry.visibleRect.maxY
             )
         } action: { _, metrics in
-            scrollMetrics = metrics
+            geometrySnapshot.scrollMetrics = metrics
             chatParams.onContentOffsetChange?(metrics.contentOffset)
 
             let atTop = metrics.distanceFromTop <= 1
             let atBottom = metrics.distanceFromBottom <= 1
-            isScrolledToBottom = type == .conversation ? atBottom : atTop
+            let isAtBoundary = type == .conversation ? atBottom : atTop
+            if isScrolledToBottom != isAtBoundary {
+                isScrolledToBottom = isAtBoundary
+            }
 
             if let handler = topPaginationHandler,
                case let .pixels(threshold) = handler.triggerType,
@@ -164,8 +169,10 @@ struct ChatMessageList<MessageContent: View>: View {
             performScroll(to: target)
             pendingScrollTo = nil
         }
-        .onPreferenceChange(MessageFramesPreferenceKey.self) { frames in
-            messageFrames = frames
+        .task(id: offsetAdjustment) {
+            guard offsetAdjustment != nil else { return }
+            await Task.yield()
+            guard !Task.isCancelled else { return }
             applyOffsetAdjustmentIfPossible()
         }
         .onAppear {
@@ -198,25 +205,42 @@ struct ChatMessageList<MessageContent: View>: View {
     }
 
     private func messageRow(_ row: MessageRow) -> some View {
-        VStack(spacing: 0) {
+        let rowID = row.id
+        let adjustmentMessageID = offsetAdjustment?.messageID
+
+        return VStack(spacing: 0) {
             if row.id == lastReadIndicatorMessageID {
                 LastReadIndicatorView()
             }
 
             rowContent(row)
-                .background(MessageMenuPreferenceViewSetter(id: row.id))
                 .background(.background)
-                .background {
-                    GeometryReader { geometry in
-                        Color.clear.preference(
-                            key: MessageFramesPreferenceKey.self,
-                            value: [row.id: geometry.frame(in: .named("ExyteChatMessageScroll"))]
-                        )
+                .onGeometryChange(for: MessageRowGeometry.self) { proxy in
+                    MessageRowGeometry(
+                        globalFrame: proxy.frame(in: .global).integral,
+                        scrollFrame: adjustmentMessageID == rowID
+                            ? proxy.frame(in: .named("ExyteChatMessageScroll"))
+                            : nil
+                    )
+                } action: { geometry in
+                    // Keep geometry out of SwiftUI-observed state. It changes while scrolling,
+                    // but only a selected row's frame is needed to position a message menu.
+                    viewModel.visibleMessageFrames[row.id] = geometry.globalFrame
+                    if let scrollFrame = geometry.scrollFrame {
+                        geometrySnapshot.adjustmentFrame = scrollFrame
+                        applyOffsetAdjustmentIfPossible()
                     }
+                }
+                .applyIf(chatParams.showMessageMenuOnLongPress) {
+                    $0.simultaneousGesture(TapGesture())
+                        .onLongPressGesture {
+                            viewModel.showMessageMenu(for: row)
+                        }
                 }
         }
         .id(row.id)
         .onAppear { messageDidAppear(row) }
+        .onDisappear { viewModel.visibleMessageFrames.removeValue(forKey: row.id) }
     }
 
     @ViewBuilder
@@ -232,12 +256,6 @@ struct ChatMessageList<MessageContent: View>: View {
             messageParams: messageParams,
             isDisplayingMessageMenu: false
         )
-        .applyIf(chatParams.showMessageMenuOnLongPress) {
-            $0.simultaneousGesture(TapGesture())
-                .onLongPressGesture {
-                    viewModel.messageMenuRow = row
-                }
-        }
         .swipeActions(edge: .leading, allowsFullSwipe: leading?.performsFirstActionWithFullSwipe ?? false) {
             if let leading {
                 swipeButtons(leading.actions, for: row.message)
@@ -326,10 +344,6 @@ struct ChatMessageList<MessageContent: View>: View {
                     position: targetPosition,
                     offset: offset
                 )
-                Task { @MainActor in
-                    await Task.yield()
-                    applyOffsetAdjustmentIfPossible()
-                }
             }
         case let .contentOffset(offset):
             scrollPosition.scrollTo(y: offset)
@@ -342,7 +356,9 @@ struct ChatMessageList<MessageContent: View>: View {
 
     private func applyOffsetAdjustmentIfPossible() {
         guard let adjustment = offsetAdjustment,
-              let frame = messageFrames[adjustment.messageID] else { return }
+              let frame = geometrySnapshot.adjustmentFrame else { return }
+
+        let scrollMetrics = geometrySnapshot.scrollMetrics
 
         let alignedY: CGFloat
         switch adjustment.position {
@@ -355,6 +371,7 @@ struct ChatMessageList<MessageContent: View>: View {
         }
 
         scrollPosition.scrollTo(y: scrollMetrics.contentOffset + frame.minY - alignedY + adjustment.offset)
+        geometrySnapshot.adjustmentFrame = nil
         offsetAdjustment = nil
     }
 }

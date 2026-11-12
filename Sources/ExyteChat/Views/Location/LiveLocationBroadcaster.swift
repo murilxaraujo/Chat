@@ -1,69 +1,90 @@
-//
-//  LiveLocationBroadcaster.swift
-//  Chat
-//
-
-import Foundation
 import CoreLocation
-import Combine
+import Foundation
+import Observation
 
 @MainActor
-final class LiveLocationBroadcaster: ObservableObject {
-
+@Observable
+final class LiveLocationBroadcaster {
     struct ActiveShare {
         let messageId: String
         let startedAt: Date
         let expiresAt: Date
     }
 
-    @Published private(set) var activeShare: ActiveShare?
+    private(set) var activeShare: ActiveShare?
 
-    var onEvent: ((LiveLocationBroadcastEvent) -> Void)?
+    @ObservationIgnored var onEvent: ((LiveLocationBroadcastEvent) -> Void)?
+    @ObservationIgnored private var locationTask: Task<Void, Never>?
+    @ObservationIgnored private var expiryTask: Task<Void, Never>?
 
-    private let locationManager = LocationManager()
-    private var cancellable: AnyCancellable?
-    private var expiryTimer: Timer?
-    private var lastCoordinate: CLLocationCoordinate2D?
+    deinit {
+        locationTask?.cancel()
+        expiryTask?.cancel()
+    }
 
-    /// Only one share can broadcast at a time - starting a new one ends whichever was already active
+    /// Only one share can broadcast at a time - starting a new share ends whichever was already active
     /// (its `.ended` event fires before this new share's first `.updated`).
     func start(messageId: String, startedAt: Date, expiresAt: Date) {
         finish()
 
         guard expiresAt > Date() else { return }
-        activeShare = ActiveShare(messageId: messageId, startedAt: startedAt, expiresAt: expiresAt)
-        lastCoordinate = nil
+        let share = ActiveShare(messageId: messageId, startedAt: startedAt, expiresAt: expiresAt)
+        activeShare = share
 
-        locationManager.startUpdatingLiveLocation()
-        cancellable = locationManager.$currentLocation
-            .compactMap { $0 }
-            .sink { [weak self] coordinate in
-                guard let self, let share = self.activeShare else { return }
-                self.lastCoordinate = coordinate
-                let liveLocation = LiveLocation(
-                    coordinate: coordinate,
-                    lastUpdateAt: Date(),
-                    startedAt: share.startedAt,
-                    expiresAt: share.expiresAt
-                )
-                self.onEvent?(.updated(messageId: share.messageId, liveLocation: liveLocation))
-            }
+        locationTask = Task { @MainActor [weak self] in
+            do {
+                for try await update in CLLocationUpdate.liveUpdates() {
+                    try Task.checkCancellation()
+                    guard let self else { return }
 
-        expiryTimer = Timer.scheduledTimer(withTimeInterval: expiresAt.timeIntervalSinceNow, repeats: false) { [weak self] _ in
-            Task { @MainActor in
+                    if update.authorizationDenied
+                        || update.authorizationDeniedGlobally
+                        || update.authorizationRestricted {
+                        self.finish()
+                        return
+                    }
+
+                    guard let location = update.location else { continue }
+                    self.publish(location.coordinate, for: share)
+                }
+                self?.finish()
+            } catch is CancellationError {
+                // Normal when the user ends the share or its lifetime expires.
+            } catch {
                 self?.finish()
             }
+        }
+
+        let remainingLifetime = max(0, expiresAt.timeIntervalSinceNow)
+        expiryTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(remainingLifetime))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            self?.finish()
         }
     }
 
     func finish() {
         guard let share = activeShare else { return }
-        locationManager.stopUpdatingLiveLocation()
-        cancellable = nil
-        expiryTimer?.invalidate()
-        expiryTimer = nil
+        locationTask?.cancel()
+        locationTask = nil
+        expiryTask?.cancel()
+        expiryTask = nil
         activeShare = nil
-        lastCoordinate = nil
         onEvent?(.ended(messageId: share.messageId))
+    }
+
+    private func publish(_ coordinate: CLLocationCoordinate2D, for share: ActiveShare) {
+        guard activeShare?.messageId == share.messageId else { return }
+        let liveLocation = LiveLocation(
+            coordinate: coordinate,
+            lastUpdateAt: Date(),
+            startedAt: share.startedAt,
+            expiresAt: share.expiresAt
+        )
+        onEvent?(.updated(messageId: share.messageId, liveLocation: liveLocation))
     }
 }

@@ -7,13 +7,25 @@ import SwiftUI
 
 struct FullscreenMediaPages: View {
 
-    @StateObject var viewModel: FullscreenMediaPagesViewModel
+    @State private var viewModel: FullscreenMediaPagesViewModel
     var showShareButton: Bool = true
     var onClose: () -> Void
 
     @State private var shareItem: ShareItem?
     @State private var isPreparingShare = false
     @State private var showMinis = true
+    @State private var shareRequestID = 0
+    @State private var attachmentToShare: Attachment?
+
+    init(
+        viewModel: FullscreenMediaPagesViewModel,
+        showShareButton: Bool = true,
+        onClose: @escaping () -> Void
+    ) {
+        _viewModel = State(initialValue: viewModel)
+        self.showShareButton = showShareButton
+        self.onClose = onClose
+    }
 
     private var tintColor: Color {
         .primary
@@ -36,6 +48,19 @@ struct FullscreenMediaPages: View {
         }
         .sheet(item: $shareItem) { item in
             ShareSheet(activityItems: [item.url])
+        }
+        .task(id: shareRequestID) {
+            let requestID = shareRequestID
+            guard let attachment = attachmentToShare else { return }
+            defer {
+                if requestID == shareRequestID {
+                    isPreparingShare = false
+                    attachmentToShare = nil
+                }
+            }
+            let url = await AttachmentSharing.prepareForSharing(attachment)
+            guard !Task.isCancelled, requestID == shareRequestID else { return }
+            shareItem = url.map(ShareItem.init)
         }
     }
 
@@ -108,7 +133,7 @@ struct FullscreenMediaPages: View {
                 AttachmentsPage(attachment: viewModel.attachments[viewModel.index])
             }
         }
-        .environmentObject(viewModel)
+        .environment(viewModel)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onTapGesture {
             withAnimation {
@@ -123,7 +148,7 @@ struct FullscreenMediaPages: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .environmentObject(viewModel)
+        .environment(viewModel)
         .tabViewStyle(.page(indexDisplayMode: .never))
         .onTapGesture {
             withAnimation {
@@ -195,15 +220,10 @@ private extension FullscreenMediaPages {
 
     func shareCurrentAttachment() {
         guard !isPreparingShare else { return }
-        let attachment = viewModel.attachments[viewModel.index]
+        guard viewModel.attachments.indices.contains(viewModel.index) else { return }
+        attachmentToShare = viewModel.attachments[viewModel.index]
         isPreparingShare = true
-        Task {
-            let url = await AttachmentSharing.prepareForSharing(attachment)
-            await MainActor.run {
-                isPreparingShare = false
-                shareItem = url.map(ShareItem.init)
-            }
-        }
+        shareRequestID += 1
     }
 }
 

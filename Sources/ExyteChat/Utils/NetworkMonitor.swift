@@ -7,20 +7,22 @@
 
 import Foundation
 import Network
+import Observation
 
 @MainActor
-class NetworkMonitor: ObservableObject {
-    private let networkMonitor = NWPathMonitor()
-    private let workerQueue = DispatchQueue(label: "Monitor")
+@Observable
+final class NetworkMonitor {
     var isConnected = false
 
-    init() {
-        networkMonitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor [weak self] in
-                self?.isConnected = path.status == .satisfied
-                self?.objectWillChange.send()
+    func monitorConnectivity() async {
+        let monitor = NWPathMonitor()
+        await withTaskCancellationHandler {
+            for await path in monitor {
+                guard !Task.isCancelled else { return }
+                isConnected = path.status == .satisfied
             }
+        } onCancel: {
+            monitor.cancel()
         }
-        networkMonitor.start(queue: workerQueue)
     }
 }

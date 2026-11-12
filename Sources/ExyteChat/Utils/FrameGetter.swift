@@ -10,19 +10,12 @@ struct FrameGetter: ViewModifier {
     @Binding var frame: CGRect
 
     func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { proxy -> AnyView in
-                    DispatchQueue.main.async {
-                        let rect = proxy.frame(in: .global)
-                        // This avoids an infinite layout loop
-                        if rect.integral != self.frame.integral {
-                            self.frame = rect
-                        }
-                    }
-                    return AnyView(EmptyView())
-                }
-            )
+        content.onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .global).integral
+        } action: { newFrame in
+            guard frame != newFrame else { return }
+            frame = newFrame
+        }
     }
 }
 
@@ -30,17 +23,12 @@ struct SizeGetter: ViewModifier {
     @Binding var size: CGSize
 
     func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { proxy -> Color in
-                    if proxy.size != self.size {
-                        DispatchQueue.main.async {
-                            self.size = proxy.size
-                        }
-                    }
-                    return Color.clear
-                }
-            )
+        content.onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { newSize in
+            guard size != newSize else { return }
+            size = newSize
+        }
     }
 }
 
@@ -48,17 +36,12 @@ struct MaxHeightGetter: ViewModifier {
     @Binding var height: CGFloat
 
     func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { proxy -> Color in
-                    if proxy.size.height > self.height {
-                        DispatchQueue.main.async {
-                            self.height = proxy.size.height
-                        }
-                    }
-                    return Color.clear
-                }
-            )
+        content.onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { newHeight in
+            guard newHeight > height else { return }
+            height = newHeight
+        }
     }
 }
 
@@ -77,33 +60,9 @@ extension View {
     }
 }
 
-actor MessageMenuPreferenceKey: PreferenceKey {
-    typealias Value = [String: CGRect]
-
-    static let defaultValue: Value = [:]
-
-    static func reduce(value: inout Value, nextValue: () -> Value) {
-        value.merge(nextValue()) { (_, new) in new }
-    }
-}
-
-struct MessageMenuPreferenceViewSetter: View {
-    let id: String
-
-    var body: some View {
-        GeometryReader { geometry in
-            Rectangle()
-                .fill(Color.clear)
-                .preference(key: MessageMenuPreferenceKey.self,
-                            value: [id: geometry.frame(in: .global)])
-        }
-    }
-}
-
 struct FinalMeasuringTrickView<Content: View>: View {
     @Binding var size: CGSize
     @State private var rawSize: CGSize = .zero
-    var id: String?
 
     let content: () -> Content
 
@@ -113,33 +72,27 @@ struct FinalMeasuringTrickView<Content: View>: View {
                 GeometryReader { geo in
                     Color.clear
                         .onAppear {
-                            if let id {
-                                print("measuring", id, rawSize, geo.size)
-                            }
                             if geo.size.height != 0 {
                                 rawSize = geo.size
                             }
                         }
                         .onChange(of: geo.size) { _ , newSize in
-                            if let id {
-                                print("measuring", id, rawSize, newSize)
-                            }
                             if newSize.height != 0 {
                                 rawSize = newSize
                             }
                         }
                 }
             )
-            .onChange(of: rawSize) { _ , newValue in
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(16)) // 1 frame
-                    if let id {
-                        print("measuring", id, "rawSize change", rawSize, newValue)
-                    }
-                    if rawSize == newValue {
-                        size = newValue
-                    }
+            .task(id: rawSize) {
+                let measuredSize = rawSize
+                guard measuredSize.height != 0 else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(16)) // 1 frame
+                } catch {
+                    return
                 }
+                guard !Task.isCancelled, rawSize == measuredSize else { return }
+                size = measuredSize
             }
             .hidden()
     }

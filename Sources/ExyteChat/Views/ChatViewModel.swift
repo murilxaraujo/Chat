@@ -3,26 +3,32 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import SwiftUI
 
 @MainActor
-final class ChatViewModel: ObservableObject {
+@Observable
+final class ChatViewModel {
 
-    @Published private(set) var fullscreenAttachmentItem: Optional<Attachment> = nil
-    @Published var fullscreenAttachmentPresented = false
+    private(set) var fullscreenAttachmentItem: Optional<Attachment> = nil
+    var fullscreenAttachmentPresented = false
 
-    @Published private(set) var fullscreenLocationMessageId: String? = nil
-    @Published var fullscreenLocationPresented = false
+    private(set) var fullscreenLocationMessageId: String? = nil
+    var fullscreenLocationPresented = false
 
-    @Published var shareAttachmentsItem: ShareAttachmentsItem? = nil
-    @Published private(set) var isPreparingAttachmentsShare = false
+    var shareAttachmentsItem: ShareAttachmentsItem? = nil
+    private(set) var isPreparingAttachmentsShare = false
 
-    @Published var messageMenuRow: MessageRow?
+    var messageMenuRow: MessageRow?
     
     /// The messages frame that is currently being rendered in the Message Menu
     /// - Note: Used to further refine a messages frame (instead of using the cell boundary), mainly used for positioning reactions
-    @Published var messageFrame: CGRect = .zero
+    var messageFrame: CGRect = .zero
+
+    /// Transient visible-row geometry. These values intentionally do not publish changes while scrolling.
+    @ObservationIgnored var visibleMessageFrames: [String: CGRect] = [:]
+    @ObservationIgnored
+    var messageCellFrame: CGRect = .zero
     
     /// Provides a mechanism to issue haptic feedback to the user
     /// - Note: Used when launching the MessageMenu
@@ -30,21 +36,19 @@ final class ChatViewModel: ObservableObject {
     let inputFieldId = UUID()
     let messageRecordingPlayer = RecordingPlayer()
 
-    var didSendMessage: (DraftMessage) -> Void = {_ in }
-    var didUpdateAttachmentStatus: (AttachmentUploadUpdate) -> Void = { _ in }
+    @ObservationIgnored var didSendMessage: (DraftMessage) -> Void = {_ in }
+    @ObservationIgnored var didUpdateAttachmentStatus: (AttachmentUploadUpdate) -> Void = { _ in }
+    @ObservationIgnored
     var inputViewModel: InputViewModel?
+    @ObservationIgnored
     var globalFocusState: GlobalFocusState?
+    @ObservationIgnored private var attachmentShareTask: Task<Void, Never>?
 
-    let liveLocationBroadcaster = LiveLocationBroadcaster()
-    private var liveLocationCancellable: AnyCancellable?
-
-    init() {
-        // forward the broadcaster's changes so views observing just `ChatViewModel` still refresh
-        // (e.g. the "sharing live location" banner)
-        liveLocationCancellable = liveLocationBroadcaster.objectWillChange
-            .sink { [weak self] in self?.objectWillChange.send() }
+    deinit {
+        attachmentShareTask?.cancel()
     }
 
+    let liveLocationBroadcaster = LiveLocationBroadcaster()
     func startLiveLocationSharing(messageId: String, liveLocation: LiveLocation) {
         liveLocationBroadcaster.start(messageId: messageId, startedAt: liveLocation.startedAt, expiresAt: liveLocation.expiresAt)
     }
@@ -76,13 +80,15 @@ final class ChatViewModel: ObservableObject {
     func shareAttachments(_ attachments: [Attachment]) {
         guard !attachments.isEmpty, !isPreparingAttachmentsShare else { return }
         isPreparingAttachmentsShare = true
-        Task { [weak self] in
+        attachmentShareTask?.cancel()
+        attachmentShareTask = Task { @MainActor [weak self] in
             let urls = await AttachmentSharing.prepareForSharing(attachments)
-            guard let self else { return }
+            guard let self, !Task.isCancelled else { return }
             self.isPreparingAttachmentsShare = false
             if !urls.isEmpty {
                 self.shareAttachmentsItem = ShareAttachmentsItem(urls: urls)
             }
+            self.attachmentShareTask = nil
         }
     }
     
@@ -92,6 +98,11 @@ final class ChatViewModel: ObservableObject {
 
     func sendMessage(_ message: DraftMessage) {
         didSendMessage(message)
+    }
+
+    func showMessageMenu(for row: MessageRow) {
+        messageCellFrame = visibleMessageFrames[row.id] ?? .zero
+        messageMenuRow = row
     }
 
     func messageMenuAction() -> (Message, DefaultMessageMenuAction) -> Void {

@@ -225,11 +225,11 @@ extension InputView {
                 if dragStart == nil {
                     dragStart = Date()
                     cancelGesture = false
-                    tapDelayTimer = Timer.scheduledTimer(withTimeInterval: tapDelay, repeats: false) { _ in
-                        if state != .isRecordingTap, state != .waitingForRecordingPermission {
-                            DispatchQueue.main.async {
-                                self.onAction(.recordAudioHold)
-                            }
+                    tapDelayTask = Task { @MainActor in
+                        do {
+                            try await Task.sleep(for: .seconds(tapDelay))
+                        } catch {
+                            return
                         }
                     }
                 }
@@ -267,3 +267,5 @@ extension InputView {
             }
     }
 }
+                tapDelayTask?.cancel()
+                tapDelayTask = nil

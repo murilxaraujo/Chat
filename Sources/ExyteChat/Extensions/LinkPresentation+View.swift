@@ -1,4 +1,4 @@
-@preconcurrency import LinkPresentation
+import LinkPresentation
 import SwiftUI
 
 /// A SwiftUI link card that uses LinkPresentation for metadata, without embedding LPLinkView.

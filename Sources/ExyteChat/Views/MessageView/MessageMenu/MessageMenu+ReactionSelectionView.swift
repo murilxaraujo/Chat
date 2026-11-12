@@ -15,7 +15,7 @@ struct ReactionSelectionView: View {
 
     @EnvironmentObject private var keyboardState: KeyboardState
 
-    @StateObject var viewModel: ChatViewModel
+    @Bindable var viewModel: ChatViewModel
     
     @State private var selectedEmoji: String = ""
     @FocusState private var emojiEntryIsFocused: Bool
@@ -32,6 +32,7 @@ struct ReactionSelectionView: View {
     @State private var viewState: ViewState = .initial
     
     @State private var bubbleDiameter: CGFloat = .zero
+    @State private var pendingReaction: PendingReaction?
     
     var backgroundColor: Color
     var selectedColor: AnyShapeStyle
@@ -113,6 +114,17 @@ struct ReactionSelectionView: View {
                 // Someone closed the keyboard while we were searching, return to `.row`
                 transitionToViewState(.row)
             }
+        }
+        .task(id: pendingReaction) {
+            guard let pendingReaction else { return }
+            do {
+                try await Task.sleep(for: pendingReaction.delay)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            reactionClosure(.emoji(pendingReaction.emoji))
+            self.pendingReaction = nil
         }
     }
     
@@ -242,24 +254,16 @@ struct ReactionSelectionView: View {
             
             switch previousState {
             case .row:
-                Task {
-                    do {
-                        try await Task.sleep(for: .milliseconds(animationDuration * 1333))
-                    } catch {
-                        return
-                    }
-                    reactionClosure(.emoji(emoji))
-                }
+                pendingReaction = PendingReaction(
+                    emoji: emoji,
+                    delay: .milliseconds(Int(animationDuration * 1333))
+                )
             case .search:
                 emojiEntryIsFocused = false
-                Task {
-                    do {
-                        try await Task.sleep(for: .milliseconds(animationDuration * 666))
-                    } catch {
-                        return
-                    }
-                    reactionClosure(.emoji(emoji))
-                }
+                pendingReaction = PendingReaction(
+                    emoji: emoji,
+                    delay: .milliseconds(Int(animationDuration * 666))
+                )
             case .initial, .picked:
                 break
             }
@@ -324,6 +328,11 @@ struct ReactionSelectionView: View {
             return bubbleDiameter / 1.5
         }
     }
+}
+
+private struct PendingReaction: Equatable {
+    let emoji: String
+    let delay: Duration
 }
 
 extension ReactionSelectionView {

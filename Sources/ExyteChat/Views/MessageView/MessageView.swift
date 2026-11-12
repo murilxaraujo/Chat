@@ -13,7 +13,7 @@ struct MessageView: View {
     @Environment(\.chatSize) var chatSize
     @Environment(\.chatLocalization) var localization
 
-    @ObservedObject var viewModel: ChatViewModel
+    @Bindable var viewModel: ChatViewModel
 
     let message: Message
     let positionInUserGroup: PositionInUserGroup

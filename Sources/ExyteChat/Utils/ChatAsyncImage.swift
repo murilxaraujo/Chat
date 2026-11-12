@@ -43,9 +43,7 @@ struct ChatAsyncImage<Content: View>: View {
         localPhase = .empty
 
         do {
-            let data = try await Task.detached(priority: .userInitiated) {
-                try Data(contentsOf: url)
-            }.value
+            let data = try await readImageData(from: url)
 
             guard !Task.isCancelled else { return }
             guard let image = image(from: data) else {
@@ -84,6 +82,11 @@ struct ChatAsyncImage<Content: View>: View {
     private enum LocalImageError: Error {
         case invalidData
     }
+}
+
+@concurrent
+private func readImageData(from url: URL) async throws -> Data {
+    try Data(contentsOf: url)
 }
 
 private extension Image.Orientation {

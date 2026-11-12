@@ -6,14 +6,17 @@
 //
 
 import SwiftUI
+import Observation
 
-final class PaginationState: ObservableObject {
-    @Published var olderInProgress = false
-    @Published var newerInProgress = false
+@MainActor
+@Observable
+final class PaginationState {
+    var olderInProgress = false
+    var newerInProgress = false
 }
 
 struct HeaderView<TopContent: View>: View {
-    @ObservedObject var paginationState: PaginationState
+    let paginationState: PaginationState
 
     let isFirst: Bool
     let type: ChatType
@@ -34,7 +37,7 @@ struct HeaderView<TopContent: View>: View {
 }
 
 struct FooterView<TopContent: View>: View {
-    @ObservedObject var paginationState: PaginationState
+    let paginationState: PaginationState
 
     let isLast: Bool
     let type: ChatType

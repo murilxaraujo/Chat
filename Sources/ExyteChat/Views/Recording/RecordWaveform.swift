@@ -10,7 +10,7 @@ import SwiftUI
 struct RecordWaveformWithButtons: View {
 
 
-    @ObservedObject var recordPlayer: RecordingPlayer
+    let recordPlayer: RecordingPlayer
 
     // 160 is screen left-padding/right-padding and playButton's width.
     // ensure that the view does not exceed the screen, need to subtract
@@ -51,9 +51,7 @@ struct RecordWaveformWithButtons: View {
                 in: Circle()
             )
             .onTapGesture {
-                Task {
-                    await recordPlayer.togglePlay(recording)
-                }
+                recordPlayer.togglePlay(recording)
             }
             
             VStack(alignment: .leading, spacing: 5) {

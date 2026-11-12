@@ -3,54 +3,75 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import SwiftUI
 import PhotosUI
 import AVFoundation
 
 @MainActor
-final class InputViewModel: ObservableObject {
+@Observable
+final class InputViewModel {
 
-    @Published var text = ""
-    @Published var attachments = InputViewAttachments()
-    @Published var state: InputViewState = .empty
+    var text = "" {
+        didSet { updateDraftState() }
+    }
+    var attachments = InputViewAttachments() {
+        didSet { updateDraftState() }
+    }
+    var state: InputViewState = .empty
 
-    @Published var showPhotoPicker = false
-    @Published var showCameraPicker = false
-    @Published var showCameraUnavailableAlert = false
-    @Published var showDocumentPicker = false
-    @Published var showLocationPicker = false
-    @Published var selectedPhotoItems: [PhotosPickerItem] = []
-    @Published var isImportingMedia = false
+    var showPhotoPicker = false
+    var showCameraPicker = false
+    var showCameraUnavailableAlert = false
+    var showDocumentPicker = false
+    var showLocationPicker = false
+    var selectedPhotoItems: [PhotosPickerItem] = []
+    var isImportingMedia = false
 
-    @Published var showActivityIndicator = false
+    var showActivityIndicator = false
 
-    var recordingPlayer: RecordingPlayer?
-    var didSendMessage: ((DraftMessage) -> Void)?
+    @ObservationIgnored var recordingPlayer: RecordingPlayer?
+    @ObservationIgnored var didSendMessage: ((DraftMessage) -> Void)?
 
-    private var recorder = Recorder()
+    @ObservationIgnored private var recorder = Recorder()
 
-    private var saveEditingClosure: ((String) -> Void)?
-    private var mediaImportGeneration = 0
+    @ObservationIgnored private var saveEditingClosure: ((String) -> Void)?
+    @ObservationIgnored private var mediaImportGeneration = 0
+    @ObservationIgnored private var recordingStartTask: Task<Void, Never>?
+    @ObservationIgnored private var recordingProgressTask: Task<Void, Never>?
 
-    private var recordPlayerSubscription: AnyCancellable?
-    private var subscriptions = Set<AnyCancellable>()
-    
-    func setRecorderSettings(recorderSettings: RecorderSettings = RecorderSettings()) {
-        Task {
-            await self.recorder.setRecorderSettings(recorderSettings)
+    func setRecorderSettings(recorderSettings: RecorderSettings = RecorderSettings()) async {
+        await recorder.setRecorderSettings(recorderSettings)
+    }
+
+    func recordingPlaybackDidFinish() {
+        state = .hasRecording
+    }
+
+    func stopRecordingWhenViewDisappears() {
+        recordingStartTask?.cancel()
+        recordingStartTask = nil
+        recordingProgressTask?.cancel()
+        recordingProgressTask = nil
+        recordingPlayer?.pause()
+
+        if state == .isRecordingTap || state == .isRecordingHold || state == .waitingForRecordingPermission {
+            if attachments.recording?.url != nil {
+                state = .hasRecording
+            } else {
+                attachments.recording = nil
+                updateDraftState()
+            }
         }
-    }
 
-    func onStart() {
-        subscribeValidation()
-    }
-
-    func onStop() {
-        subscriptions.removeAll()
+        Task { await recorder.stopRecording() }
     }
 
     func reset() {
+        recordingStartTask?.cancel()
+        recordingStartTask = nil
+        recordingProgressTask?.cancel()
+        recordingProgressTask = nil
         text = ""
         attachments = InputViewAttachments()
         state = .empty
@@ -62,13 +83,15 @@ final class InputViewModel: ObservableObject {
         showDocumentPicker = false
         showLocationPicker = false
         saveEditingClosure = nil
-        subscribeValidation()
+        updateDraftState()
     }
 
     func send() {
         Task {
+            recordingProgressTask?.cancel()
+            recordingProgressTask = nil
             await recorder.stopRecording()
-            await recordingPlayer?.reset()
+            recordingPlayer?.reset()
             sendMessage()
         }
     }
@@ -114,31 +137,29 @@ final class InputViewModel: ObservableObject {
             state = .isRecordingTap
         case .stopRecordAudio:
             Task {
+                recordingProgressTask?.cancel()
+                recordingProgressTask = nil
                 await recorder.stopRecording()
                 if let _ = attachments.recording {
                     state = .hasRecording
                 }
-                await recordingPlayer?.reset()
+                recordingPlayer?.reset()
             }
         case .deleteRecord:
             Task {
-                unsubscribeRecordPlayer()
+                recordingProgressTask?.cancel()
+                recordingProgressTask = nil
                 await recorder.stopRecording()
                 attachments.recording = nil
             }
         case .playRecord:
             state = .playingRecording
             if let recording = attachments.recording {
-                Task {
-                    subscribeRecordPlayer()
-                    await recordingPlayer?.play(recording)
-                }
+                recordingPlayer?.play(recording)
             }
         case .pauseRecord:
             state = .pausedRecording
-            Task {
-                await recordingPlayer?.pause()
-            }
+            recordingPlayer?.pause()
         case .saveEdit:
             saveEditingClosure?(text)
             reset()
@@ -156,74 +177,67 @@ final class InputViewModel: ObservableObject {
         isImportingMedia = true
 
         let importedMedia = await NativeMediaImporter.importItems(items)
-        guard generation == mediaImportGeneration else { return }
+        defer {
+            if generation == mediaImportGeneration {
+                isImportingMedia = false
+            }
+        }
+        guard !Task.isCancelled, generation == mediaImportGeneration else { return }
 
         attachments.medias.append(contentsOf: importedMedia)
-        isImportingMedia = false
     }
 
     private func recordAudio() {
-        let progressHandler: Recorder.ProgressHandler = { [weak self] duration, samples in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.attachments.recording?.duration = duration
-                self.attachments.recording?.waveformSamples = samples
-            }
-        }
-
-        Task { @MainActor [recorder] in
-            if await recorder.isRecording { return }
+        recordingStartTask?.cancel()
+        recordingStartTask = Task { @MainActor [weak self, recorder] in
+            guard let self else { return }
+            guard !(await recorder.isRecording), !Task.isCancelled else { return }
             attachments.recording = Recording()
-            let url = await recorder.startRecording(durationProgressHandler: progressHandler)
+            guard let session = await recorder.startRecording() else {
+                if await recorder.isRecording { return }
+                attachments.recording = nil
+                updateDraftState()
+                if state == .waitingForRecordingPermission {
+                    state = .empty
+                }
+                return
+            }
+            guard !Task.isCancelled else {
+                await recorder.stopRecording()
+                return
+            }
             if state == .waitingForRecordingPermission {
                 state = .isRecordingTap
             }
-            attachments.recording?.url = url
+            attachments.recording?.url = session.url
+
+            recordingProgressTask = Task { @MainActor [weak self] in
+                for await progress in session.progress {
+                    guard !Task.isCancelled, let self,
+                          self.attachments.recording?.url == session.url else { return }
+                    self.attachments.recording?.duration = progress.duration
+                    self.attachments.recording?.waveformSamples = progress.waveformSamples
+                }
+            }
         }
     }
 }
 
 private extension InputViewModel {
 
-    func validateDraft() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            guard self.state != .editing else { return } // special case
-            let hasAttachments = !self.attachments.medias.isEmpty || !self.attachments.documents.isEmpty || self.attachments.staticLocation != nil || self.attachments.liveLocation != nil
-            if !self.text.isEmpty || hasAttachments {
-                self.state = .hasTextOrMedia
-            } else if self.text.isEmpty,
-                      !hasAttachments,
-                      self.attachments.recording == nil {
-                self.state = .empty
-            }
+    func updateDraftState() {
+        guard state != .editing else { return }
+        let hasAttachments = !attachments.medias.isEmpty
+            || !attachments.documents.isEmpty
+            || attachments.staticLocation != nil
+            || attachments.liveLocation != nil
+        if !text.isEmpty || hasAttachments {
+            state = .hasTextOrMedia
+        } else if attachments.recording == nil {
+            state = .empty
         }
     }
 
-    func subscribeValidation() {
-        $attachments.sink { [weak self] _ in
-            self?.validateDraft()
-        }
-        .store(in: &subscriptions)
-
-        $text.sink { [weak self] _ in
-            self?.validateDraft()
-        }
-        .store(in: &subscriptions)
-    }
-
-    func subscribeRecordPlayer() {
-        guard let recordingPlayer else { return }
-        recordPlayerSubscription = recordingPlayer.didPlayTillEnd
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.state = .hasRecording
-            }
-    }
-
-    func unsubscribeRecordPlayer() {
-        recordPlayerSubscription = nil
-    }
 }
 
 private extension InputViewModel {

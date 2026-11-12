@@ -11,7 +11,7 @@ struct ChatMessageView<MessageContent: View>: View {
 
     typealias MessageBuilderParamsClosure = ChatView<MessageContent, EmptyView, DefaultMessageMenuAction>.MessageBuilderParamsClosure
 
-    @ObservedObject var viewModel: ChatViewModel
+    let viewModel: ChatViewModel
 
     var messageBuilder: MessageBuilderParamsClosure
 
@@ -30,7 +30,7 @@ struct ChatMessageView<MessageContent: View>: View {
                     positionInGroup: row.positionInUserGroup,
                     positionInMessagesSection: row.positionInMessagesSection,
                     positionInCommentsGroup: row.commentsPosition,
-                    showContextMenuClosure: { viewModel.messageMenuRow = row },
+                    showContextMenuClosure: { viewModel.showMessageMenu(for: row) },
                     messageActionClosure: viewModel.messageMenuAction(),
                     showAttachmentClosure: { attachment in
                         self.viewModel.presentAttachmentFullScreen(attachment)
@@ -50,7 +50,7 @@ struct ChatMessageView<MessageContent: View>: View {
                 )
             } else {
                 customMessageView
-                    .environmentObject(viewModel)
+                    .environment(viewModel)
                     .environment(\.chatMessageType, chatType)
                     .environment(\.messageCustomizationParams, messageParams)
             }

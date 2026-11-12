@@ -13,8 +13,8 @@ struct InputView: View {
 
     @EnvironmentObject var keyboardState: KeyboardState
 
-    @ObservedObject var viewModel: InputViewModel
-    @StateObject var recordingPlayer = RecordingPlayer()
+    @Bindable var viewModel: InputViewModel
+    @State var recordingPlayer = RecordingPlayer()
 
     var inputFieldId: UUID
     var style: InputViewStyle
@@ -32,7 +32,7 @@ struct InputView: View {
     @State var inputBarFrame: CGRect = .zero
 
     @State var dragStart: Date?
-    @State var tapDelayTimer: Timer?
+    @State var tapDelayTask: Task<Void, Never>?
     @State var cancelGesture = false
 
     var onAction: (InputViewAction) -> Void {
@@ -67,7 +67,18 @@ struct InputView: View {
         }
         .onAppear {
             viewModel.recordingPlayer = recordingPlayer
-            viewModel.setRecorderSettings(recorderSettings: recorderSettings)
+        }
+        .onDisappear {
+            viewModel.stopRecordingWhenViewDisappears()
+        }
+        .task {
+            await viewModel.setRecorderSettings(recorderSettings: recorderSettings)
+        }
+        .task {
+            for await _ in recordingPlayer.playbackEnded {
+                guard !Task.isCancelled else { return }
+                viewModel.recordingPlaybackDidFinish()
+            }
         }
         .onDrag(towards: .bottom, ofAmount: 100...) {
             keyboardState.dismissKeyboard()
@@ -239,9 +250,9 @@ struct InputView: View {
 
 @MainActor
 private struct InputViewPreviewHost: View {
-    @StateObject private var viewModel = InputViewModel()
+    @State private var viewModel = InputViewModel()
     @StateObject private var keyboardState = KeyboardState()
-    @StateObject private var globalFocusState = GlobalFocusState()
+    @State private var globalFocusState = GlobalFocusState()
     @State private var lastSentMessage: String?
 
     private let inputFieldID = UUID()
@@ -269,7 +280,7 @@ private struct InputViewPreviewHost: View {
         .background(Color.secondary.opacity(0.08))
         .environment(\.chatSize, previewSize)
         .environmentObject(keyboardState)
-        .environmentObject(globalFocusState)
+        .environment(globalFocusState)
         .onAppear {
             viewModel.didSendMessage = { draft in
                 lastSentMessage = draft.text.isEmpty ? "Attachment sent" : draft.text

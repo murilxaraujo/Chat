@@ -1,5 +1,7 @@
-@preconcurrency import AVFoundation
+import AVFoundation
 import CoreImage
+import Observation
+import Synchronization
 import SwiftUI
 
 enum NativeCameraMode: String, CaseIterable {
@@ -8,32 +10,44 @@ enum NativeCameraMode: String, CaseIterable {
 }
 
 @MainActor
-final class NativeCameraModel: ObservableObject {
-    let session = AVCaptureSession()
+@Observable
+final class NativeCameraModel {
+    @ObservationIgnored let session = AVCaptureSession()
 
-    @Published private(set) var videoDevice: AVCaptureDevice?
-    @Published private(set) var previewImage: CGImage?
-    @Published private(set) var isConfigured = false
-    @Published private(set) var mode: NativeCameraMode = .photo
-    @Published private(set) var isRecording = false
-    @Published var alertMessage: String?
+    private(set) var videoDevice: AVCaptureDevice?
+    private(set) var previewImage: CGImage?
+    private(set) var isConfigured = false
+    private(set) var mode: NativeCameraMode = .photo
+    private(set) var isRecording = false
+    var alertMessage: String?
 
-    private let captureService: NativeCameraCaptureService
+    @ObservationIgnored private let captureService: NativeCameraCaptureService
+    @ObservationIgnored private let previewImageStream: AsyncStream<CGImage>
+    @ObservationIgnored private var previewImageTask: Task<Void, Never>?
+    @ObservationIgnored
     private let onCapture: (DraftMedia) -> Void
+    @ObservationIgnored
     private var acceptsCaptureResults = true
+    @ObservationIgnored
     private var isActive = false
 
     init(onCapture: @escaping (DraftMedia) -> Void) {
+        let (previewImageStream, previewImageContinuation) = AsyncStream.makeStream(
+            of: CGImage.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        self.previewImageStream = previewImageStream
         self.onCapture = onCapture
-        captureService = NativeCameraCaptureService(session: session)
-        captureService.setPreviewImageHandler { [weak self] image in
-            self?.previewImage = image
-        }
+        captureService = NativeCameraCaptureService(
+            session: session,
+            previewImageContinuation: previewImageContinuation
+        )
     }
 
     func start() {
         isActive = true
         acceptsCaptureResults = true
+        observePreviewImages()
         Task { [weak self] in
             guard await Self.requestAccess(for: .video) else {
                 guard self?.isActive == true else { return }
@@ -57,8 +71,21 @@ final class NativeCameraModel: ObservableObject {
     func stop() {
         isActive = false
         acceptsCaptureResults = false
+        previewImageTask?.cancel()
+        previewImageTask = nil
         previewImage = nil
         captureService.stopSession()
+    }
+
+    private func observePreviewImages() {
+        guard previewImageTask == nil else { return }
+        let previewImageStream = previewImageStream
+        previewImageTask = Task { @MainActor [weak self, previewImageStream] in
+            for await image in previewImageStream {
+                guard !Task.isCancelled, let self else { return }
+                self.previewImage = image
+            }
+        }
     }
 
     func selectMode(_ newMode: NativeCameraMode) {
@@ -147,23 +174,32 @@ final class NativeCameraModel: ObservableObject {
     }
 }
 
+// SAFETY: `sessionExecutor` serializes every access to the capture graph and mutable service state.
+// Sample-buffer processing is confined to `videoQueue`; preview images cross to the UI through AsyncStream.
+// Follow-up: remove this conformance when AVFoundation delegate requirements are Sendable or when its
+// Objective-C delegates can be isolated behind framework-supported async APIs.
 private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRecordingDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let session: AVCaptureSession
-    private let sessionQueue = DispatchQueue(label: "com.exyte.chat.camera-session")
+    private let sessionExecutor = CameraSessionExecutor()
+    // AVCaptureVideoDataOutput requires a serial delegate queue for sample buffers.
     private let videoQueue = DispatchQueue(label: "com.exyte.chat.camera-preview")
+    private let previewImageContinuation: AsyncStream<CGImage>.Continuation
     private let photoOutput = AVCapturePhotoOutput()
     private let movieOutput = AVCaptureMovieFileOutput()
     private let videoDataOutput = AVCaptureVideoDataOutput()
     private let imageContext = CIContext()
     private var audioInput: AVCaptureDeviceInput?
     private var captureAngle: CGFloat = 0
-    private var previewImageHandler: (@MainActor @Sendable (CGImage?) -> Void)?
     private var photoDelegates: [Int64: PhotoCaptureDelegate] = [:]
     private var recordingCompletion: (@MainActor @Sendable (URL?, String?) -> Void)?
     private var stopSessionAfterRecording = false
 
-    init(session: AVCaptureSession) {
+    init(
+        session: AVCaptureSession,
+        previewImageContinuation: AsyncStream<CGImage>.Continuation
+    ) {
         self.session = session
+        self.previewImageContinuation = previewImageContinuation
         super.init()
         videoDataOutput.alwaysDiscardsLateVideoFrames = true
         videoDataOutput.videoSettings = [
@@ -172,12 +208,8 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
         videoDataOutput.setSampleBufferDelegate(self, queue: videoQueue)
     }
 
-    func setPreviewImageHandler(_ handler: @escaping @MainActor @Sendable (CGImage?) -> Void) {
-        previewImageHandler = handler
-    }
-
     func configure(completion: @escaping @MainActor @Sendable (CameraDeviceReference?, String?) -> Void) {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             do {
                 guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
@@ -211,15 +243,16 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
                 self.session.commitConfiguration()
                 self.applyCaptureRotationAngle()
                 self.session.startRunning()
-                DispatchQueue.main.async { completion(CameraDeviceReference(camera), nil) }
+                Task { @MainActor in completion(CameraDeviceReference(camera), nil) }
             } catch {
-                DispatchQueue.main.async { completion(nil, error.localizedDescription) }
+                let message = error.localizedDescription
+                Task { @MainActor in completion(nil, message) }
             }
         }
     }
 
     func stopSession() {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self, self.session.isRunning else { return }
             if self.movieOutput.isRecording {
                 self.stopSessionAfterRecording = true
@@ -231,7 +264,7 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
     }
 
     func setMode(_ mode: NativeCameraMode, completion: @escaping @MainActor @Sendable (String?) -> Void) {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             do {
                 self.session.beginConfiguration()
@@ -278,18 +311,21 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
                 }
 
                 self.applyCaptureRotationAngle()
-                DispatchQueue.main.async { completion(nil) }
+                Task { @MainActor in completion(nil) }
             } catch {
-                DispatchQueue.main.async { completion(error.localizedDescription) }
+                let message = error.localizedDescription
+                Task { @MainActor in completion(message) }
             }
         }
     }
 
     func capturePhoto(completion: @escaping @MainActor @Sendable (URL?, String?) -> Void) {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             guard self.session.outputs.contains(where: { $0 === self.photoOutput }) else {
-                DispatchQueue.main.async { completion(nil, NativeCameraError.photoCaptureUnavailable.localizedDescription) }
+                Task { @MainActor in
+                    completion(nil, NativeCameraError.photoCaptureUnavailable.localizedDescription)
+                }
                 return
             }
 
@@ -300,14 +336,14 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
             } else {
                 settings = AVCapturePhotoSettings()
             }
-            let delegate = PhotoCaptureDelegate(uniqueID: settings.uniqueID, completion: completion)
-            self.photoDelegates[settings.uniqueID] = delegate
-            delegate.onFinish = { [weak self] in
+            let uniqueID = settings.uniqueID
+            let delegate = PhotoCaptureDelegate(uniqueID: uniqueID, completion: completion) { [weak self] in
                 guard let self else { return }
-                self.sessionQueue.async {
-                    self.photoDelegates.removeValue(forKey: settings.uniqueID)
+                self.performOnSession {
+                    self.photoDelegates.removeValue(forKey: uniqueID)
                 }
             }
+            self.photoDelegates[uniqueID] = delegate
             self.photoOutput.capturePhoto(with: settings, delegate: delegate)
         }
     }
@@ -316,11 +352,13 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
         onStart: @escaping @MainActor @Sendable (Bool, String?) -> Void,
         onFinish: @escaping @MainActor @Sendable (URL?, String?) -> Void
     ) {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             guard !self.movieOutput.isRecording,
                   self.session.outputs.contains(where: { $0 === self.movieOutput }) else {
-                DispatchQueue.main.async { onStart(false, NativeCameraError.videoCaptureUnavailable.localizedDescription) }
+                Task { @MainActor in
+                    onStart(false, NativeCameraError.videoCaptureUnavailable.localizedDescription)
+                }
                 return
             }
 
@@ -329,19 +367,19 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
             self.recordingCompletion = onFinish
             self.stopSessionAfterRecording = false
             self.movieOutput.startRecording(to: url, recordingDelegate: self)
-            DispatchQueue.main.async { onStart(true, nil) }
+            Task { @MainActor in onStart(true, nil) }
         }
     }
 
     func stopRecording() {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self, self.movieOutput.isRecording else { return }
             self.movieOutput.stopRecording()
         }
     }
 
     func setCaptureRotationAngle(_ angle: CGFloat) {
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             self.captureAngle = angle
             self.applyCaptureRotationAngle()
@@ -367,9 +405,7 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
         let image = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cgImage = imageContext.createCGImage(image, from: image.extent) else { return }
 
-        DispatchQueue.main.async { [weak self] in
-            self?.previewImageHandler?(cgImage)
-        }
+        previewImageContinuation.yield(cgImage)
     }
 
     func fileOutput(
@@ -379,18 +415,14 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
         error: Error?
     ) {
         let message = error?.localizedDescription
-        sessionQueue.async { [weak self] in
+        performOnSession { [weak self] in
             guard let self else { return }
             let completion = self.recordingCompletion
             self.recordingCompletion = nil
             if let message {
-                DispatchQueue.main.async {
-                    completion?(nil, message)
-                }
+                Task { @MainActor in completion?(nil, message) }
             } else {
-                DispatchQueue.main.async {
-                    completion?(outputFileURL, nil)
-                }
+                Task { @MainActor in completion?(outputFileURL, nil) }
             }
             self.stopSessionIfRequested()
         }
@@ -403,23 +435,48 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
             session.stopRunning()
         }
     }
+
+    private func performOnSession(_ operation: @escaping @Sendable () -> Void) {
+        let executor = sessionExecutor
+        Task {
+            await executor.perform(operation)
+        }
+    }
 }
 
+private actor CameraSessionExecutor {
+    func perform(_ operation: @Sendable () -> Void) {
+        operation()
+    }
+}
+
+// SAFETY: Capture inputs and callbacks are immutable; the one-shot completion gate is protected by Mutex.
+// Follow-up: remove this conformance when AVFoundation's NSObject delegate protocol is Sendable.
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
     private let uniqueID: Int64
     private let completion: @MainActor @Sendable (URL?, String?) -> Void
-    var onFinish: (() -> Void)?
-    private var didComplete = false
+    private let onFinish: @Sendable () -> Void
+    private let completionGate = Mutex(false)
 
-    init(uniqueID: Int64, completion: @escaping @MainActor @Sendable (URL?, String?) -> Void) {
+    init(
+        uniqueID: Int64,
+        completion: @escaping @MainActor @Sendable (URL?, String?) -> Void,
+        onFinish: @escaping @Sendable () -> Void
+    ) {
         self.uniqueID = uniqueID
         self.completion = completion
+        self.onFinish = onFinish
     }
 
     func finish(url: URL?, errorMessage: String?) {
-        guard !didComplete else { return }
-        didComplete = true
-        DispatchQueue.main.async { self.completion(url, errorMessage) }
+        let shouldComplete = completionGate.withLock { didComplete in
+            guard !didComplete else { return false }
+            didComplete = true
+            return true
+        }
+        guard shouldComplete else { return }
+        let completion = self.completion
+        Task { @MainActor in completion(url, errorMessage) }
     }
 
     func photoOutput(
@@ -451,10 +508,13 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
         if let error {
             finish(url: nil, errorMessage: error.localizedDescription)
         }
-        onFinish?()
+        onFinish()
     }
 }
 
+// SAFETY: The wrapper is immutable and transfers the device handle once to MainActor for rotation observation;
+// capture-session configuration stays isolated to CameraSessionExecutor. Replace with a Sendable device ID and
+// a main-actor device lookup if AVFoundation exposes a safe lookup/conformance for this use case.
 private struct CameraDeviceReference: @unchecked Sendable {
     let device: AVCaptureDevice
 
@@ -494,12 +554,12 @@ private enum NativeCameraError: LocalizedError {
 struct NativeCameraView: View {
     let onCancel: () -> Void
 
-    @StateObject private var model: NativeCameraModel
+    @State private var model: NativeCameraModel
     @State private var rotationObserver = CameraRotationObserver()
 
     init(onCapture: @escaping (DraftMedia) -> Void, onCancel: @escaping () -> Void) {
         self.onCancel = onCancel
-        _model = StateObject(wrappedValue: NativeCameraModel(onCapture: onCapture))
+        _model = State(initialValue: NativeCameraModel(onCapture: onCapture))
     }
 
     var body: some View {
@@ -621,7 +681,7 @@ private final class CameraRotationObserver {
 
         captureAngleObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) { _, change in
             guard let angle = change.newValue else { return }
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 model.updateCaptureRotationAngle(angle)
             }
         }

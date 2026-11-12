@@ -7,9 +7,13 @@ import AVKit
 
 struct VideoView: View {
 
-    @EnvironmentObject var mediaPagesViewModel: FullscreenMediaPagesViewModel
+    @Environment(FullscreenMediaPagesViewModel.self) private var mediaPagesViewModel
 
-    @StateObject var viewModel: VideoViewModel
+    @State private var viewModel: VideoViewModel
+
+    init(attachment: Attachment) {
+        _viewModel = State(initialValue: VideoViewModel(attachment: attachment))
+    }
 
     var body: some View {
         Group {

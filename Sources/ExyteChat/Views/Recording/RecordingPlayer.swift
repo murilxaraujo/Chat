@@ -1,107 +1,98 @@
-//
-//  RecordingPlayer.swift
-//
-//
-//  Created by Alexandra Afonasova on 21.06.2022.
-//
+import AVFoundation
+import Foundation
+import Observation
 
-@preconcurrency import Combine
-@preconcurrency import AVFoundation
+@MainActor
+@Observable
+final class RecordingPlayer {
+    private(set) var playing = false
+    private(set) var currentURL: URL?
+    private(set) var duration = 0.0
+    private(set) var secondsLeft = 0.0
+    private(set) var progress = 0.0
 
-final actor RecordingPlayer: ObservableObject {
-
-    @MainActor @Published var playing = false
-    @MainActor @Published var currentURL: URL? = nil
-    @MainActor @Published var duration: Double = 0.0
-    @MainActor @Published var secondsLeft: Double = 0.0
-    @MainActor @Published var progress: Double = 0.0
-
-    @MainActor let didPlayTillEnd = PassthroughSubject<Void, Never>()
-
-    private var recording: Recording? {
-        didSet {
-            let newRecording = recording
-            internalPlaying = false
-            Task { @MainActor in
-                self.progress = 0
-                if let r = newRecording {
-                    self.currentURL = r.url
-                    self.duration = r.duration
-                    self.secondsLeft = r.duration
-                } else {
-                    self.currentURL = nil
-                    self.duration = 0
-                    self.secondsLeft = 0
-                }
-            }
-        }
-    }
-
-    private var internalPlaying = false {
-        didSet {
-            Task { @MainActor in
-                self.playing = await internalPlaying
-            }
-        }
-    }
+    let playbackEnded: AsyncStream<Void>
 
     #if os(iOS)
-    private let audioSession = AVAudioSession()
+    @ObservationIgnored private let audioSession = AVAudioSession()
     #endif
-    private var player: AVPlayer?
-    private var timeObserver: Any?
+
+    @ObservationIgnored private let playbackEndedContinuation: AsyncStream<Void>.Continuation
+    @ObservationIgnored private var recording: Recording? {
+        didSet { updateRecordingMetadata() }
+    }
+    @ObservationIgnored private var player: AVPlayer?
+    @ObservationIgnored private var timelineTask: Task<Void, Never>?
+    @ObservationIgnored private var playbackEndTask: Task<Void, Never>?
 
     init() {
+        let (playbackEnded, continuation) = AsyncStream.makeStream(
+            of: Void.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        self.playbackEnded = playbackEnded
+        playbackEndedContinuation = continuation
+
         #if os(iOS)
         try? audioSession.setCategory(.playback)
         try? audioSession.overrideOutputAudioPort(.speaker)
         #endif
     }
 
+    deinit {
+        timelineTask?.cancel()
+        playbackEndTask?.cancel()
+        player?.pause()
+        playbackEndedContinuation.finish()
+    }
+
     func play(_ recording: Recording) {
-        setupPlayer(for: recording)
+        if self.recording?.url != recording.url {
+            setupPlayer(for: recording)
+        }
         play()
     }
 
     func pause() {
         player?.pause()
-        internalPlaying = false
+        playing = false
+        RecordingPlaybackCoordinator.deactivate(self)
     }
 
     func togglePlay(_ recording: Recording) {
         if self.recording?.url != recording.url {
             setupPlayer(for: recording)
         }
-        internalPlaying ? pause() : play()
+        playing ? pause() : play()
     }
 
-    func seek(with recording: Recording, to progress: Double) {
-        let goalTime = recording.duration * progress
-        if self.recording == nil {
+    func seek(with recording: Recording, to progress: Double) async {
+        if self.recording?.url != recording.url {
             setupPlayer(for: recording)
-            Task {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                await player?.seek(to: CMTime(seconds: goalTime, preferredTimescale: 10))
-                if !internalPlaying { play() }
-            }
-            return
         }
-        player?.seek(to: CMTime(seconds: goalTime, preferredTimescale: 10))
-        if !internalPlaying {
+        guard let player else { return }
+
+        let goalTime = recording.duration * progress
+        _ = await player.seek(to: CMTime(seconds: goalTime, preferredTimescale: 10))
+        if !playing {
             play()
         }
     }
 
-    func seek(to progress: Double) {
-        if let recording {
-            let goalTime = recording.duration * progress
-            player?.seek(to: CMTime(seconds: goalTime, preferredTimescale: 10))
-            if !internalPlaying { play() }
+    func seek(to progress: Double) async {
+        guard let recording, let player else { return }
+        let goalTime = recording.duration * progress
+        _ = await player.seek(to: CMTime(seconds: goalTime, preferredTimescale: 10))
+        if !playing {
+            play()
         }
     }
 
     func reset() {
-        if internalPlaying { pause() }
+        pause()
+        stopObservingCurrentItem()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
         recording = nil
     }
 
@@ -109,71 +100,97 @@ final actor RecordingPlayer: ObservableObject {
         #if os(iOS)
         try? audioSession.setActive(true)
         #endif
-        player?.play()
-        internalPlaying = true
-        NotificationCenter.default.post(name: .chatAudioIsPlaying, object: self)
+        guard let player else { return }
+        RecordingPlaybackCoordinator.activate(self)
+        player.play()
+        playing = true
     }
 
     private func setupPlayer(for recording: Recording) {
         guard let url = recording.url else { return }
+        stopObservingCurrentItem()
+        player?.pause()
+        playing = false
+        RecordingPlaybackCoordinator.deactivate(self)
+
         self.recording = recording
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
+        self.player = player
+        observePlaybackEnd(of: item, using: player)
+        observeTimeline(of: item)
+    }
 
-        NotificationCenter.default.removeObserver(self)
-        timeObserver = nil
-        player?.replaceCurrentItem(with: nil)
-        player = nil
+    private func observePlaybackEnd(of item: AVPlayerItem, using player: AVPlayer) {
+        playbackEndTask = Task { @MainActor [weak self, item, player] in
+            let notifications = NotificationCenter.default
+                .notifications(named: AVPlayerItem.didPlayToEndTimeNotification, object: item)
+                .map { _ in () }
 
-        let playerItem = AVPlayerItem(url: url)
-        player = AVPlayer(playerItem: playerItem)
-        
-        NotificationCenter.default.addObserver(forName: .chatAudioIsPlaying, object: nil, queue: nil) { [weak self] notification in
-            if let sender = notification.object as? RecordingPlayer {
-                Task { [weak self] in
-                    let senderURL = await sender.recording?.url
-                    let selfURL = await self?.recording?.url
-                    if senderURL == selfURL {
-                        return
-                    }
-                    await self?.pause()
-                }
-            }
-        }
-
-        NotificationCenter.default.addObserver(
-            forName: AVPlayerItem.didPlayToEndTimeNotification,
-            object: playerItem,
-            queue: nil
-        ) { [weak self] _ in
-            Task { [weak self] in
-                await self?.setPlayingState(false)
-                await self?.player?.seek(to: .zero)
-                await self?.didPlayTillEnd.send()
-            }
-        }
-
-        timeObserver = player?.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.2, preferredTimescale: 10),
-            queue: .main
-        ) { [weak self] time in
-            Task { [weak self] in
-                guard let self, let item = await self.player?.currentItem, !item.duration.seconds.isNaN else {
-                    return
-                }
-                await MainActor.run {
-                     self.updateProgress(item.duration, time)
-                }
+            for await _ in notifications {
+                guard !Task.isCancelled, let self else { return }
+                self.playing = false
+                _ = await player.seek(to: .zero)
+                guard !Task.isCancelled, self.player === player else { return }
+                RecordingPlaybackCoordinator.deactivate(self)
+                self.playbackEndedContinuation.yield(())
             }
         }
     }
 
-    private func setPlayingState(_ isPlaying: Bool) {
-        self.internalPlaying = isPlaying
+    private func observeTimeline(of item: AVPlayerItem) {
+        let interval = CMTime(seconds: 0.2, preferredTimescale: 10)
+        timelineTask = Task { @MainActor [weak self, item] in
+            for await time in item.integratedTimeline.periodicTimes(forInterval: interval) {
+                guard !Task.isCancelled, let self else { return }
+                let duration = item.duration.seconds
+                guard duration.isFinite, duration > 0, time.seconds.isFinite else { continue }
+                self.updateProgress(duration, time)
+            }
+        }
     }
 
-    @MainActor
-    private func updateProgress(_ itemDuration: CMTime, _ time: CMTime) {
-        duration = itemDuration.seconds
-        progress = time.seconds / itemDuration.seconds
-        secondsLeft = (itemDuration.seconds - time.seconds).rounded()
+    private func stopObservingCurrentItem() {
+        timelineTask?.cancel()
+        timelineTask = nil
+        playbackEndTask?.cancel()
+        playbackEndTask = nil
+    }
+
+    private func updateRecordingMetadata() {
+        progress = 0
+        guard let recording else {
+            currentURL = nil
+            duration = 0
+            secondsLeft = 0
+            return
+        }
+        currentURL = recording.url
+        duration = recording.duration
+        secondsLeft = recording.duration
+    }
+
+    private func updateProgress(_ duration: Double, _ time: CMTime) {
+        self.duration = duration
+        progress = time.seconds / duration
+        secondsLeft = (duration - time.seconds).rounded()
+    }
+}
+
+@MainActor
+private enum RecordingPlaybackCoordinator {
+    private(set) static weak var activePlayer: RecordingPlayer?
+
+    static func activate(_ player: RecordingPlayer) {
+        if let activePlayer, activePlayer !== player {
+            activePlayer.pause()
+        }
+        activePlayer = player
+    }
+
+    static func deactivate(_ player: RecordingPlayer) {
+        if activePlayer === player {
+            activePlayer = nil
+        }
     }
 }

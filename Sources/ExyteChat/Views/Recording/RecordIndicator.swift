@@ -34,12 +34,16 @@ struct GrowingCircleIndicatorView: View {
         return Circle()
             .scaleEffect(scale)
             .opacity(opacity)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                    withAnimation(animation) {
-                        scale = 1
-                        opacity = 0
-                    }
+            .task {
+                do {
+                    try await Task.sleep(for: .milliseconds(10))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                withAnimation(animation) {
+                    scale = 1
+                    opacity = 0
                 }
             }
     }

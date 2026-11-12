@@ -3,7 +3,7 @@ import SwiftUI
 struct DefaultMessageView: View {
     let params: MessageBuilderParameters
 
-    @EnvironmentObject private var viewModel: ChatViewModel
+    @Environment(ChatViewModel.self) private var viewModel
     @Environment(\.chatMessageType) private var chatType
     @Environment(\.messageCustomizationParams) private var customizationParams
 

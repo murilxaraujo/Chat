@@ -8,7 +8,7 @@ import SwiftUI
 struct ReactionOverview: View {
 
     @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
-    @StateObject var viewModel: ChatViewModel
+    @Bindable var viewModel: ChatViewModel
 
     let message: Message
     let width: CGFloat

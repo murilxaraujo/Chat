@@ -26,7 +26,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
 
     @EnvironmentObject private var keyboardState: KeyboardState
-    @StateObject var viewModel: ChatViewModel
+    @Bindable var viewModel: ChatViewModel
 
     @Binding var isShowingMenu: Bool
 
@@ -111,6 +111,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     
     @State private var showDestructiveAlert = false
     @State private var pendingDestructiveAction: ActionEnum?
+    @State private var pendingReaction: ReactionType?
 
     /// This flag is used to adjust the dismiss animation
     @State private var didReact: Bool = false
@@ -196,13 +197,58 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
         )
         .onAppear {
             transitionViewState(to: .prepare)
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(Int(animationDuration * 333))) {
+        }
+        .task(id: viewState) {
+            switch viewState {
+            case .prepare:
+                do {
+                    try await Task.sleep(for: .milliseconds(Int(animationDuration * 333)))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
                 transitionViewState(to: .original)
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(Int(animationDuration * 666))) {
+
+            case .original:
+                do {
+                    try await Task.sleep(for: .milliseconds(Int(animationDuration * 333)))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
                 transitionViewState(to: .ready)
+
+            case .dismiss:
+                let fadeDelay = Int(animationDuration * 333)
+                let dismissalDelay = didReact
+                    ? Int(animationDuration * 1333)
+                    : Int(animationDuration * 1000)
+                do {
+                    try await Task.sleep(for: .milliseconds(fadeDelay))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut) {
+                    messageMenuOpacity = 0
+                    backgroundOpacity = 0
+                }
+
+                let remainingDelay = max(0, dismissalDelay - fadeDelay)
+                if remainingDelay > 0 {
+                    do {
+                        try await Task.sleep(for: .milliseconds(remainingDelay))
+                    } catch {
+                        return
+                    }
+                }
+                guard !Task.isCancelled else { return }
+                isShowingMenu = false
+                reactionHandler.didReact(pendingReaction)
+                dismiss()
+
+            case .initial, .ready, .keyboard:
+                break
             }
         }
         .onChange(of: keyboardState.isShown) { _, isShown in
@@ -330,13 +376,6 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
                 reactionOverviewIsVisible = false
                 menuIsVisible = false
                 verticalOffset = calcVertOffset(previousState: oldState)
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(Int(animationDuration * 333))) {
-                withAnimation(.easeOut) {
-                    messageMenuOpacity = 0
-                    backgroundOpacity = 0
-                }
             }
         }
     }
@@ -613,17 +652,12 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
 
     private func dismissSelf(_ rt: ReactionType? = nil) {
         if keyboardState.isShown { keyboardState.dismissKeyboard() }
+        pendingReaction = rt
         transitionViewState(to: .dismiss)
-        let delay = didReact ? Int(animationDuration * 1333) : Int(animationDuration * 1000)
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delay)) {
-            isShowingMenu = false
-            reactionHandler.didReact(rt)
-            dismiss()
-        }
     }
 }
 
-enum ViewState {
+enum ViewState: Equatable {
     case initial
     case prepare
     case original

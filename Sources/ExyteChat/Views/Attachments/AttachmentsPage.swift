@@ -7,7 +7,7 @@ import SwiftUI
 struct AttachmentsPage: View {
     @Environment(\.openURL) private var openURL
 
-    @EnvironmentObject var mediaPagesViewModel: FullscreenMediaPagesViewModel
+    @Environment(FullscreenMediaPagesViewModel.self) private var mediaPagesViewModel
 
     let attachment: Attachment
 
@@ -26,7 +26,7 @@ struct AttachmentsPage: View {
                 }
             }
         } else if attachment.type == .video {
-            VideoView(viewModel: VideoViewModel(attachment: attachment))
+            VideoView(attachment: attachment)
         } else if attachment.type == .document {
             documentView
         } else {

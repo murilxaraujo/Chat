@@ -3,17 +3,19 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
-final class FullscreenMediaPagesViewModel: ObservableObject {
+@MainActor
+@Observable
+final class FullscreenMediaPagesViewModel {
     var attachments: [Attachment]
-    @Published var index: Int
+    var index: Int
 
-    @Published var videoPlaying = false
-    @Published var videoMuted = false
+    var videoPlaying = false
+    var videoMuted = false
 
-    @Published var toggleVideoPlaying = {}
-    @Published var toggleVideoMuted = {}
+    var toggleVideoPlaying = {}
+    var toggleVideoMuted = {}
 
     init(attachments: [Attachment], index: Int) {
         self.attachments = attachments
