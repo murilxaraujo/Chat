@@ -236,7 +236,7 @@ ChatView(messages: viewModel.messages) { draft in
 ```
 `messageMenuAction`'s parameters:  
 - `selectedMenuAction` - action selected by the user from the menu. NOTE: when declaring this variable, specify its type (your custom descendant of MessageMenuAction) explicitly    
-- `defaultActionClosure` - a closure taking a case of default implementation of MessageMenuAction which provides simple actions handlers; you call this closure passing the selected message and choosing one of the default actions (.copy, .reply, .edit, .share) if you need them; or you can write a custom implementation for all your actions, in that case just ignore this closure
+- `defaultActionClosure` - a closure taking a case of the default `MessageMenuAction` implementation; use it for the built-in reply, edit, and share actions, or write a custom implementation and ignore this closure. Message text uses SwiftUI selection and system copy commands instead of a menu Copy action.
 - `message` - message for which the menu is displayed
     
 When implementing your own `MessageMenuActionClosure`, write a switch statement passing through all the cases of your `MessageMenuAction`, inside each case write your own action handler, or call the default one. NOTE: not all default actions work out of the box - e.g. for `.edit` you'll still need to provide a closure to save the edited text on your BE. Please see CommentsExampleView in ChatExample project for MessageMenuActionClosure usage example.
@@ -252,22 +252,22 @@ These use `AnyView`, so please try to keep them easy enough
 `showScrollToBottomButton` - little arrow button appearing when offset != 0     
 `showNetworkConnectionProblem` - display network error on/off    
 `showDateHeaders` - show section headers with dates between days, default is `true`     
-`isScrollEnabled` - forbid scrolling for messages' `UITableView`      
-`keyboardDismissMode` - set keyboard dismiss mode for the chat list (.interactive, .onDrag, or .none), default is .none    
+`isScrollEnabled` - enable or disable scrolling for the messages list
+`keyboardDismissMode` - set how list scrolling interacts with the keyboard (`.interactively`, `.immediately`, `.never`, or `.automatic`), default is `.never`
 `autoFocusTextInputOnChatOpen` - automatically focus the inputTextView when the chat view is opened, default is `false`
 `showMessageMenuOnLongPress` - turn menu on long tap on/off    
 `showShareAttachmentButton` - show/hide the share button in the fullscreen attachment viewer, default is `true`    
 `messageMenuAnimationDuration` - control how fast/snappy the message menu animations feel    
 `contentInsets` - set additional content insets for the messages list   
-`onContentOffsetChange` - get table's content offset updates  
-`scrollTo` - scroll to messageID, certain pixels offset, top or bottom
-`onWillDisplayCell` - UITableView's will display cell delegate calls this closure     
+`onContentOffsetChange` - get the SwiftUI scroll view's content offset updates
+`scrollTo` - scroll to a message, content offset, or the newest/oldest message
+`onMessageAppear` - called when a message enters the visible region
 `enableLoadMore(offset: Int = 0, _ handler: @escaping ()->())` - when user scrolls up to `offset`-th message from the end, call the handler   function, so user can load more messages    
 `localization` - can be localized in the Localizable.strings files    
 `onLiveLocationBroadcast` - `(LiveLocationBroadcastEvent) -> Void`, called as this device's own active live location share progresses - `.updated(messageId:liveLocation:)` on every fresh fix, `.ended(messageId:)` when it stops (see Location Attachments below)    
 
 ### Update transactions
-`updateTransaction` - awaitable updates helper similar in usage to `tableView.performBatchUpdates`
+`updateTransaction` - awaitable helper that applies message updates in a SwiftUI `Transaction`
 ```swift
 await updateTransaction(animationMode: .natural) {
     self.messages.append(nextMessage)
@@ -276,8 +276,8 @@ await updateTransaction(animationMode: .natural) {
 ``` 
 available modes are:
 - `none` - no animations
-- `natural` - standard UITableView's animations
-- `keepStable` - no animations + if you insert rows to the "front" of the table - it keeps the current scroll position (normally it would jump because contentSize and contentOffset changed)
+- `natural` - apply the update with the default SwiftUI animation
+- `keepStable` - apply the update without animation; scroll anchoring follows SwiftUI's scroll-position behavior
 
 ### Delete action (default menu)
 If you use the default message menu (no custom `MessageMenuAction` enum), you can add a "Delete" button with a confirmation alert using:
@@ -473,7 +473,7 @@ if let document = message.attachments.first(where: { $0.type == .document }) {
 }  
 ```
 
-Tapping a document bubble opens the fullscreen viewer with an "Open" button that calls `UIApplication.shared.open(attachment.full)` - this works well once `full` is a real `https://` URL (opens it in Safari/downloads), but not for local `file://` URLs, so make sure to upload the file and swap in a remote URL before other participants receive the message.
+Tapping a document bubble opens the fullscreen viewer with an "Open" button that uses SwiftUI's `openURL` environment action. Remote `https://` URLs open in Safari; upload local files and replace their URL before other participants receive the message.
 
 ## Location Attachments
 

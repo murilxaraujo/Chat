@@ -6,10 +6,10 @@
 import SwiftUI
 
 protocol SwipeActionable {
-    func render(type: ChatType) -> UIImage
     var action: (Message, @escaping (Message, DefaultMessageMenuAction) -> Void) -> Void { get }
     var activeFor: (Message) -> Bool { get }
     var background: Color? { get }
+    var content: AnyView { get }
 }
 
 /// A simple container for both the leading and trailing swipe actions
@@ -47,10 +47,4 @@ public struct SwipeAction: SwipeActionable {
         self.content = AnyView(content())
     }
     
-    @MainActor
-    func render(type: ChatType) -> UIImage {
-        let renderer = ImageRenderer(content: self.content.rotationEffect(type == .conversation ? .degrees(180) : .degrees(0)))
-        renderer.scale = UIScreen.main.scale
-        return renderer.uiImage!
-    }
 }

@@ -17,9 +17,10 @@ struct ActivityIndicator: View {
     var body: some View {
         ZStack {
             if showBackground {
-                Color(UIColor.secondarySystemBackground).opacity(0.8)
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.regularMaterial)
+                    .opacity(0.8)
                     .viewSize(100)
-                    .cornerRadius(8)
             }
 
             ProgressView()

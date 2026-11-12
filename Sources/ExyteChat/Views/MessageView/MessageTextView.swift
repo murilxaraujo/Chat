@@ -28,6 +28,8 @@ struct MessageTextView: View {
             VStack(alignment: .leading) {
                 Text(attributedText)
                     .foregroundStyle(theme.colors.messageText(userType))
+                    .textSelection(.enabled)
+                    .copyable([String(attributedText.characters)])
 
                 if !previewLinks.isEmpty {
                     VStack(alignment: userType == .current ? .trailing : .leading) {
@@ -39,7 +41,7 @@ struct MessageTextView: View {
                     .frame(minWidth: Self.minLinkPreviewWidth)
                 }
             }
-            .font(Font(params.font as CTFont))
+            .font(params.font)
         }
     }
 }

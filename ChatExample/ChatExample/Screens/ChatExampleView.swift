@@ -6,11 +6,10 @@ import SwiftUI
 import ExyteChat
 
 enum ChatExampleMenuAction: MessageMenuAction {
-    case copy, reply, edit, delete
+    case reply, edit, delete
 
     func title() -> String {
         switch self {
-        case .copy: "Copy"
         case .reply: "Reply"
         case .edit: "Edit"
         case .delete: "Delete"
@@ -19,7 +18,6 @@ enum ChatExampleMenuAction: MessageMenuAction {
 
     func icon() -> Image {
         switch self {
-        case .copy: Image(systemName: "doc.on.doc")
         case .reply: Image(systemName: "arrowshape.turn.up.left")
         case .edit:
             if #available(iOS 18.0, macCatalyst 18.0, *) {
@@ -34,7 +32,7 @@ enum ChatExampleMenuAction: MessageMenuAction {
     func isDestructive() -> Bool { self == .delete }
 
     static func menuItems(for message: Message) -> [ChatExampleMenuAction] {
-        message.user.isCurrentUser ? [.copy, .reply, .edit, .delete] : [.copy, .reply]
+        message.user.isCurrentUser ? [.reply, .edit, .delete] : [.reply]
     }
 }
 
@@ -59,8 +57,6 @@ struct ChatExampleView: View {
             },
             messageMenuAction: { (action: ChatExampleMenuAction, defaultActionClosure, message) in
                 switch action {
-                case .copy:
-                    defaultActionClosure(message, .copy)
                 case .reply:
                     defaultActionClosure(message, .reply)
                 case .edit:
@@ -86,10 +82,10 @@ struct ChatExampleView: View {
                 .foregroundStyle(Color(.exampleGrey))
         }
         .mainHeaderBuilder { mainHeaderView }
-        .updateTransaction($viewModel.tableTransaction)
+        .updateTransaction($viewModel.chatUpdateTransaction)
         .scrollTo(viewModel.scrollToParams)
         .inputViewText($text)
-        .keyboardDismissMode(.interactive)
+        .keyboardDismissMode(.interactively)
         .setRecorderSettings(recorderSettings)
         .messageReactionDelegate(viewModel)
         .showLastReadIndicator(true)

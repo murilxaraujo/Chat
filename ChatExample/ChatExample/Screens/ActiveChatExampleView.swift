@@ -21,8 +21,8 @@ struct ActiveChatExampleView: View {
         ChatView(messages: viewModel.messages, chatType: .conversation) { draft in
             viewModel.send(draft: draft)
         }
-        .updateTransaction($viewModel.tableTransaction)
-        .keyboardDismissMode(.interactive)
+        .updateTransaction($viewModel.chatUpdateTransaction)
+        .keyboardDismissMode(.interactively)
         .showUsername(true)
         .messageReactionDelegate(viewModel)
         .navigationBarBackButtonHidden()

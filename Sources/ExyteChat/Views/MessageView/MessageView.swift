@@ -32,60 +32,11 @@ struct MessageView: View {
     static let attachmentPadding: CGFloat = 1  // for multiple attachments
     static let horizontalBubblePadding: CGFloat = 70
 
-    enum TimeViewArrangement {
-        case hstack, vstack, overlay
-    }
-
     var additionalMediaInset: CGFloat {
         message.attachments.count > 1 ? MessageView.attachmentPadding * 2 : 0
     }
 
-    var timeViewArrangement: TimeViewArrangement {
-        let text = message.attributedText
-        if !text.urls.isEmpty && params.linkPreviewLimit > 0 {
-            return .vstack
-        }
-
-        let isCurrentUser = message.user.isCurrentUser
-        let bubblePaddings = MessageView.horizontalScreenEdgePadding * 2 + MessageView.horizontalBubblePadding
-        let avatarViewWithPaddings = params.avatarSize + MessageView.horizontalSpacing
-        let statusViewWithPaddings = MessageView.statusViewWidth + MessageView.horizontalSpacing
-        let textPaddings = MessageView.horizontalTextPadding * 2
-        let widthWithoutMedia =
-            chatSize.width
-            - bubblePaddings
-            - (isCurrentUser && params.showAvatar ? 0 : avatarViewWithPaddings)
-            - (isCurrentUser ? MessageView.statusViewWidth : 0)
-            - textPaddings
-
-        let maxWidth = message.attachments.isEmpty
-            ? widthWithoutMedia
-            : MessageView.widthWithMedia - textPaddings
-
-        let finalWidth = text.width(withConstrainedWidth: maxWidth, font: params.font)
-        let lastLineWidth = text.lastLineWidth(labelWidth: maxWidth, font: params.font)
-        let numberOfLines = text.numberOfLines(labelWidth: maxWidth, font: params.font)
-
-        let timeWidth = AttributedString(message.formattedDate).width(withConstrainedWidth: maxWidth, font: params.timeFont) + MessageView.timeViewTextPadding * 2
-
-        if numberOfLines == 1, finalWidth + CGFloat(timeWidth) < maxWidth {
-            return .hstack
-        }
-        if lastLineWidth + CGFloat(timeWidth) < finalWidth {
-            return .overlay
-        }
-        return .vstack
-    }
-
-    var reactionViewWidth: CGFloat {
-        struct Cache { static var value: CGFloat? }
-        if let value = Cache.value { return value }
-
-        let value = AttributedString("🙃️️️️").width(withConstrainedWidth: chatSize.width, font: params.font) + ReactionBubble.padding * 2
-
-        Cache.value = value
-        return value
-    }
+    @ScaledMetric(relativeTo: .body) var reactionViewWidth: CGFloat = 30
 
     var showAvatar: Bool {
         isDisplayingMessageMenu
@@ -178,7 +129,7 @@ struct MessageView: View {
 
                 if message.hasText {
                     textWithTimeView(message)
-                        .font(Font(params.font))
+                        .font(params.font)
                 }
 
                 if let recording = message.recording {
@@ -424,35 +375,31 @@ struct MessageView: View {
         .applyIf(!message.attachments.isEmpty) {
             $0.frame(maxWidth: .infinity, alignment: .leading)
         }
-        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, MessageView.horizontalTextPadding)
 
         let timeView = messageTimeView()
             .padding(.horizontal, MessageView.timeViewTextPadding)
 
-            Group {
-                switch timeViewArrangement {
-                case .hstack:
-                    HStack(alignment: .lastTextBaseline, spacing: 0) {
-                        messageView
-                            .lineLimit(1)
-                        if !message.attachments.isEmpty {
-                            Spacer()
-                        }
-                        timeView
-                    }
-                case .vstack:
-                    VStack(alignment: .trailing, spacing: 4) {
-                        messageView
-                        timeView
-                    }
-                case .overlay:
+        let stacked = VStack(alignment: .trailing, spacing: 4) {
+            messageView.fixedSize(horizontal: false, vertical: true)
+            timeView
+        }
+
+        if !message.attachments.isEmpty || (!message.attributedText.urls.isEmpty && params.linkPreviewLimit > 0) {
+            stacked
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .lastTextBaseline, spacing: 0) {
                     messageView
-                        .overlay(alignment: .bottomTrailing) {
-                            timeView
-                        }
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                    timeView.fixedSize()
                 }
+                .fixedSize(horizontal: true, vertical: false)
+
+                stacked
             }
+        }
     }
 
     @ViewBuilder
@@ -480,7 +427,7 @@ struct MessageView: View {
                     MessageTimeView(text: message.formattedDate, userType: message.user.type)
                 }
             }
-            .font(Font(params.timeFont))
+            .font(params.timeFont)
         }
     }
 }
@@ -606,7 +553,6 @@ extension View {
 //                        isDisplayingMessageMenu: false,
 //                        showMessageTimeView: true,
 //                        messageLinkPreviewLimit: 8,
-//                        font: UIFontMetrics.default.scaledFont(for: UIFont.systemFont(ofSize: 15))
 //                    )
 //                    
 //                    MessageView(
@@ -622,7 +568,6 @@ extension View {
 //                        isDisplayingMessageMenu: false,
 //                        showMessageTimeView: true,
 //                        messageLinkPreviewLimit: 8,
-//                        font: UIFontMetrics.default.scaledFont(for: UIFont.systemFont(ofSize: 15))
 //                    )
 //                }
 //                

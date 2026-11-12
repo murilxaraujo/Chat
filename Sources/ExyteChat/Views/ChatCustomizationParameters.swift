@@ -17,14 +17,14 @@ struct ChatCustomizationParameters {
     var showMessageMenuOnLongPress: Bool = true
     var showShareAttachmentButton: Bool = true
     var showLastReadIndicator: Bool = false
-    var keyboardDismissMode: UIScrollView.KeyboardDismissMode = .none
+    var keyboardDismissMode: ScrollDismissesKeyboardMode = .never
     var messageMenuAnimationDuration: CGFloat = 0.3
-    var contentInsets: UIEdgeInsets = .zero
+    var contentInsets = EdgeInsets()
 
     var scrollToParams: ScrollToParams?
     var onContentOffsetChange: ((CGFloat) -> Void)? // Internal → External
-    var onWillDisplayCell: ((Message) -> Void)?
-    var onTransactionReady: ((TableUpdateTransaction) -> Void)?
+    var onMessageAppear: ((Message) -> Void)?
+    var onTransactionReady: ((ChatUpdateTransaction) -> Void)?
     var onLiveLocationBroadcast: ((LiveLocationBroadcastEvent) -> Void)?
 
     var olderMessagesPaginationHandler: PaginationHandler?
@@ -34,22 +34,28 @@ struct ChatCustomizationParameters {
     var listSwipeActions = ListSwipeActions()
 }
 
+public enum ChatScrollPosition: Equatable, Sendable {
+    case top
+    case middle
+    case bottom
+}
+
 public struct ScrollToParams: Equatable {
     public enum ScrollTo: Equatable {
-        case messageID(messageID: String, position: UITableView.ScrollPosition, offset: CGFloat)
-        case tableOffset(CGFloat)
+        case messageID(messageID: String, position: ChatScrollPosition, offset: CGFloat)
+        case contentOffset(CGFloat)
         case newestMessage
         case oldestMessage
     }
 
     let scrollTo: ScrollTo
 
-    public init(messageID: String, position: UITableView.ScrollPosition, offset: CGFloat = 0) {
+    public init(messageID: String, position: ChatScrollPosition = .middle, offset: CGFloat = 0) {
         self.scrollTo = .messageID(messageID: messageID, position: position, offset: offset)
     }
 
     public init(offset: CGFloat) {
-        self.scrollTo = .tableOffset(offset)
+        self.scrollTo = .contentOffset(offset)
     }
 
     public init(_ scrollTo: ScrollTo) {
@@ -62,8 +68,8 @@ struct MessageCustomizationParameters {
     var showUsername = false
     var linkPreviewLimit = 1
     var shouldShowPreviewForLink: (URL) -> Bool = { _ in true }
-    var font = UIFontMetrics.default.scaledFont(for: UIFont.systemFont(ofSize: 15))
-    var timeFont = UIFontMetrics.default.scaledFont(for: UIFont.systemFont(ofSize: 10))
+    var font = Font.body
+    var timeFont = Font.caption
 
     // avatar
     var showAvatar = true

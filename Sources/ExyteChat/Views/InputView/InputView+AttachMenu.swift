@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 private struct AttachMenuItem {
     let icon: Image
@@ -80,18 +79,15 @@ extension InputView {
         }
     }
 
-    /// Wait for the keyboard to dismiss so the popover anchors to the input bar's final frame.
     fileprivate func openAttachMenu() {
         guard keyboardState.isShown else {
             isAttachMenuPresented = true
             return
         }
 
-        keyboardState.resignFirstResponder()
-        Task {
-            for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification) {
-                break
-            }
+        keyboardState.dismissKeyboard()
+        Task { @MainActor in
+            await Task.yield()
             isAttachMenuPresented = true
         }
     }

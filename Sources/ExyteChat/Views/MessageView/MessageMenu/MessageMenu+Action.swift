@@ -23,17 +23,14 @@ extension MessageMenuAction {
 
 public enum DefaultMessageMenuAction: MessageMenuAction, Sendable {
 
-    case copy
     case reply
     case edit(saveClosure: @Sendable (String) -> Void)
     case share
 
-    public init() {self.init()}
+    public init() { self = .reply }
 
     public func title() -> String {
         switch self {
-        case .copy:
-            "Copy"
         case .reply:
             "Reply"
         case .edit:
@@ -45,8 +42,6 @@ public enum DefaultMessageMenuAction: MessageMenuAction, Sendable {
 
     public func icon() -> Image {
         switch self {
-        case .copy:
-            Image(systemName: "doc.on.doc")
         case .reply:
             Image(systemName: "arrowshape.turn.up.left")
         case .edit:
@@ -62,8 +57,7 @@ public enum DefaultMessageMenuAction: MessageMenuAction, Sendable {
 
     nonisolated public static func == (lhs: DefaultMessageMenuAction, rhs: DefaultMessageMenuAction) -> Bool {
         switch (lhs, rhs) {
-        case (.copy, .copy),
-             (.reply, .reply),
+        case (.reply, .reply),
              (.edit(_), .edit(_)),
              (.share, .share):
             return true
@@ -73,11 +67,11 @@ public enum DefaultMessageMenuAction: MessageMenuAction, Sendable {
     }
 
     public static let allCases: [DefaultMessageMenuAction] = [
-        .copy, .reply, .edit(saveClosure: {_ in}), .share
+        .reply, .edit(saveClosure: {_ in}), .share
     ]
 
     static public func menuItems(for message: Message) -> [DefaultMessageMenuAction] {
-        var items: [DefaultMessageMenuAction] = message.user.isCurrentUser ? [.copy, .reply, .edit(saveClosure: {_ in})] : [.copy, .reply]
+        var items: [DefaultMessageMenuAction] = message.user.isCurrentUser ? [.reply, .edit(saveClosure: {_ in})] : [.reply]
         let hasShareableAttachments = message.attachments.contains { $0.fullUploadStatus == nil || $0.fullUploadStatus == .complete }
         if hasShareableAttachments {
             items.append(.share)

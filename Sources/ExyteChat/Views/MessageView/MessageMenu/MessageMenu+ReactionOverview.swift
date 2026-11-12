@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ReactionOverview: View {
 
+    @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
     @StateObject var viewModel: ChatViewModel
 
     let message: Message
@@ -106,9 +107,9 @@ struct ReactionOverview: View {
     private var horizontalOffset: CGFloat {
         guard inScrollView else { return 0 }
         if message.user.isCurrentUser {
-            return UIApplication.safeArea.leading
+            return safeAreaInsets.leading
         } else {
-            return -UIApplication.safeArea.leading
+            return -safeAreaInsets.leading
         }
     }
 
@@ -159,8 +160,8 @@ struct ReactionOverview: View {
                         user: sally, createdAt: Date.now.addingTimeInterval(-10), type: .emoji("🧠")),
                 ]
             ),
-            width: UIScreen.main.bounds.width,
-            backgroundColor: Color(UIColor.secondarySystemBackground),
+            width: 390,
+            backgroundColor: Color.gray.opacity(0.1),
             inScrollView: false
         )
     }

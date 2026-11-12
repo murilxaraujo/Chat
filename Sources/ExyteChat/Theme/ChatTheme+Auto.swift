@@ -46,14 +46,11 @@ extension View {
 
 extension Color {
     var luminance: Double {
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        let resolved = resolve(in: EnvironmentValues())
         /// https://en.wikipedia.org/wiki/Relative_luminance
-        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        return luminance
+        return 0.2126 * Double(resolved.red)
+            + 0.7152 * Double(resolved.green)
+            + 0.0722 * Double(resolved.blue)
     }
 }
 
@@ -69,12 +66,12 @@ public enum ThemedBackgroundStyle {
     internal func getBackgroundColor(withAccent accentColor: Color, improveContrast: Bool) -> Color {
         switch self {
         case .systemDefault:
-            return Color(UIColor.systemBackground)
+            return .white
         case .static(let color):
             return color
         case .mixedWithAccentColor(let amount):
-            return Color(UIColor.systemBackground)
-                .mix(with: Color(UIColor.secondarySystemBackground), by: improveContrast ? 0.85 : 0.0)
+            return Color.white
+                .mix(with: Color(white: 0.95), by: improveContrast ? 0.85 : 0.0)
                 .mix(with: accentColor, by: amount)
         }
     }
@@ -82,14 +79,14 @@ public enum ThemedBackgroundStyle {
     internal func getFriendMessageColor(improveContrast: Bool, background: Color) -> Color {
         switch self {
         case .systemDefault:
-            return Color(UIColor.secondarySystemBackground)
+            return Color(white: 0.95)
         case .static:
-            return Color(UIColor.secondarySystemBackground)
+            return Color(white: 0.95)
         case .mixedWithAccentColor:
             if improveContrast {
-                return Color(UIColor.systemBackground).mix(with: background, by: 0.2)
+                return Color.white.mix(with: background, by: 0.2)
             } else {
-                return Color(UIColor.secondarySystemBackground).mix(with: background, by: 0.1)
+                return Color(white: 0.95).mix(with: background, by: 0.1)
             }
         }
     }

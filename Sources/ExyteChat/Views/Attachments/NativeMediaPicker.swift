@@ -2,7 +2,6 @@ import AVFoundation
 import ImageIO
 import PhotosUI
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 
 enum NativeMediaImporter {
@@ -35,12 +34,32 @@ enum NativeMediaImporter {
         generator.appliesPreferredTrackTransform = true
 
         guard let cgImage = try? await generator.image(at: .zero).image,
-              let data = UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.82),
+              let data = jpegData(from: cgImage, compressionQuality: 0.82),
               let thumbnailURL = try? writeTemporaryFile(data, fileExtension: "jpg") else {
             return nil
         }
 
         return DraftMedia(url: url, thumbnailURL: thumbnailURL, type: .video)
+    }
+
+    private static func jpegData(from image: CGImage, compressionQuality: CGFloat) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.jpeg.identifier as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+
+        CGImageDestinationAddImage(
+            destination,
+            image,
+            [kCGImageDestinationLossyCompressionQuality: compressionQuality] as CFDictionary
+        )
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
     }
 
     static func copyToTemporaryDirectory(from sourceURL: URL) throws -> URL {

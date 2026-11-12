@@ -9,10 +9,11 @@ struct ReactionSelectionView: View {
     
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.chatSize) private var chatSize
+    @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
 
     static let maxSelectionRowWidth: CGFloat = 400
 
-    @StateObject private var keyboardState = KeyboardState()
+    @EnvironmentObject private var keyboardState: KeyboardState
 
     @StateObject var viewModel: ChatViewModel
     
@@ -293,10 +294,10 @@ struct ReactionSelectionView: View {
             return .leastNonzeroMagnitude
         case .search, .picked:
             if alignment == .left {
-                let additionalPadding = max(0, chatSize.width - maxSelectionRowWidth - leadingPadding) - UIApplication.safeArea.leading
+                let additionalPadding = max(0, chatSize.width - maxSelectionRowWidth - leadingPadding) - safeAreaInsets.leading
                 return -((chatSize.width - (additionalPadding + trailingPadding * 3) - (bubbleDiameter * 0.8)) - viewModel.messageFrame.maxX)
             } else {
-                let additionalPadding = max(0, chatSize.width - maxSelectionRowWidth - trailingPadding) - UIApplication.safeArea.leading
+                let additionalPadding = max(0, chatSize.width - maxSelectionRowWidth - trailingPadding) - safeAreaInsets.leading
                 return viewModel.messageFrame.minX - ((additionalPadding + trailingPadding * 3) + (bubbleDiameter * 0.8))
             }
         }

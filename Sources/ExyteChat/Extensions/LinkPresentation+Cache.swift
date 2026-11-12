@@ -11,7 +11,7 @@ import LinkPresentation
 /// Generating the metadata to display in a link preview is expensive, and would occur every time we scroll past a message bubble with a link preview inside.
 /// Therefore, we need a cache to prevent the enriched metadata from disappearing and reappearing every time we scroll past a message with a preview.
 /// NSCache almost does what we want, but only works on class types, which doesn't work with the URL struct we'd like to use as the key.
-/// Therefore: create a light wrapper around NSCache that does not require the caller to drop down to UIKit.
+/// Therefore, keep metadata caching behind the SwiftUI link-card implementation.
 class LinkMetadataCache {
 
     private let nsCache = NSCache<NSURL, LPLinkMetadata>()

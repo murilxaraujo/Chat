@@ -5,6 +5,7 @@
 import SwiftUI
 
 struct AttachmentsPage: View {
+    @Environment(\.openURL) private var openURL
 
     @EnvironmentObject var mediaPagesViewModel: FullscreenMediaPagesViewModel
     @Environment(\.chatTheme) private var theme
@@ -51,7 +52,7 @@ struct AttachmentsPage: View {
                 .padding(.horizontal, 24)
 
             Button {
-                UIApplication.shared.open(attachment.full)
+                openURL(attachment.full)
             } label: {
                 Text("Open", bundle: .module)
                     .padding(20, 10)

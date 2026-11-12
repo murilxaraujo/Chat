@@ -98,7 +98,7 @@ struct CommentsExampleView: View {
                     swipeActionButtonStandard(title: "Edit", image: "bubble.and.pencil")
                 }
             ])
-            // Just like with UITableView's we can enable, or disable, `performsFirstActionWithFullSwipe` triggering the first action
+            // SwiftUI lets you enable or disable `performsFirstActionWithFullSwipe` for each edge.
             .swipeActions(edge: .trailing, performsFirstActionWithFullSwipe: true, items: [
                 SwipeAction(action: onInfo) {
                     Image(systemName: "info.bubble")
@@ -205,7 +205,7 @@ struct CommentsExampleView: View {
 extension CommentsExampleView {
     
     /// `message` - message the swipe action was triggered on
-    /// `defaultActions` - closure to perform default ChatView actions such as .reply, .edit, or .copy
+    /// `defaultActions` - closure to perform default ChatView actions such as .reply, .edit, or .share
     
     func onDelete(message: Message, defaultActions: @escaping (Message, DefaultMessageMenuAction) -> Void) {
         print("Swipe Action - Delete: \(message)")

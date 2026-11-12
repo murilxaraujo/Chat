@@ -10,7 +10,7 @@ final class ChatExampleViewModel: ObservableObject, ReactionDelegate {
 
     @Published var messages: [Message] = []
 
-    var tableTransaction: TableUpdateTransaction?
+    var chatUpdateTransaction: ChatUpdateTransaction?
     var scrollToParams: ScrollToParams?
 
     var newPagesCount = 0
@@ -50,20 +50,20 @@ final class ChatExampleViewModel: ObservableObject, ReactionDelegate {
     }
 
     func loadNewerMessagesPage() async {
-        guard let tableTransaction else { return }
+        guard let chatUpdateTransaction else { return }
         newPagesCount += 1
         await interactor.loadNewerMessagesPage()
         let messages = await interactor.toMessages()
-        await tableTransaction(animationMode: .keepStable) {
+        await chatUpdateTransaction(animationMode: .keepStable) {
             self.messages = messages
         }
     }
 
     func loadOlderMessagesPage() async {
-        guard let tableTransaction else { return }
+        guard let chatUpdateTransaction else { return }
         await interactor.loadOlderMessagesPage()
         let messages = await interactor.toMessages()
-        await tableTransaction(animated: false) {
+        await chatUpdateTransaction(animated: false) {
             self.messages = messages
         }
     }

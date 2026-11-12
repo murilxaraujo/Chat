@@ -1,5 +1,5 @@
 //
-//  UIList+Pagination.swift
+//  PaginationViews.swift
 //  Chat
 //
 //  Created by Alisa Mylnikova on 05.05.2026.
@@ -51,14 +51,6 @@ struct FooterView<TopContent: View>: View {
                 topContent()
             }
         }
-    }
-}
-
-extension UITableView {
-    func relayoutHeadersFooters() {
-        // update header/footer heights without full reload
-        self.beginUpdates()
-        self.endUpdates()
     }
 }
 

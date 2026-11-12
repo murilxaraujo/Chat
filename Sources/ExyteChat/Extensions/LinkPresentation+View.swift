@@ -1,108 +1,101 @@
-//
-//  LinkPresentation+View.swift
-//  Chat
-//
-//  Created by Matthew Fennell on 25/03/2025.
-//
-
-// LinkPresentation is not yet updated to support strict concurrency checking.
-// LPLinkMetadata is not sendable; meanwhile, startFetchingMetadata(for:) uses a background thread and runs in a
-// nonisolated context.
-// Therefore, LPLinkMetadata is not usable from the main actor until Apple updates the library.
-// Once LinkPresentation supports structured concurrency, we should remove the @preconcurrency annotation.
 @preconcurrency import LinkPresentation
 import SwiftUI
 
-/// Lightweight wrapper around LPLinkView, that allows for more convenient use from SwiftUI.
-private struct LinkViewRepresentable: UIViewRepresentable {
-
-    let metadata: LinkPreviewMetadata
-
-    func makeUIView(context: Context) -> LPLinkView {
-        switch metadata {
-        case .placeholder(let url):
-            LPLinkView(url: url)
-        case .enriched(let metadata):
-            LPLinkView(metadata: metadata)
-        }
-    }
-
-    func updateUIView(_ uiView: LPLinkView, context: Context) {}
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: LPLinkView, context: Context) -> CGSize? {
-        let proposedWidth = proposal.width ?? .greatestFiniteMagnitude
-        let fit = uiView.sizeThatFits(
-            CGSize(width: proposedWidth, height: .greatestFiniteMagnitude)
-        )
-        let height = proposal.height ?? fit.height
-        return CGSize(width: fit.width, height: height)
-    }
-}
-
-/// In our default chat view, link previews appear in the message itself.
-/// Inside the message, there is limited space, and if multiple links are given, the default link preview design, with title, image, video etc takes up too much space.
-/// Unfortunately, Apple does not let us customise the LPLinkView presentation (e.g. hiding the preview image), apart from modifying the view's size.
-/// Therefore, create a small wrapper around LinkViewRepresentable, which presents the preview in a small "pill" form.
-private struct PlaceholderOrEnrichedLinkPillView: View {
-
-    private let metadata: LinkPreviewMetadata
-
-    init(url: URL) {
-        self.metadata = LinkPreviewMetadata.placeholder(for: url)
-    }
-
-    init(metadata: LPLinkMetadata) {
-        self.metadata = LinkPreviewMetadata.enriched(with: metadata)
-    }
-
-    var body: some View {
-        LinkViewRepresentable(metadata: metadata)
-    }
-}
-
-/// PlaceholderOrEnrichedLinkPillView has two mutually exclusive cases - either displaying a placeholder, or enriched content.
-/// To switch from one case to the other, you need to create a new view.
-/// This is inconvenient for consumers since you have to keep track of whether the enriched metadata has loaded or not.
-///
-/// Therefore, this view manages this complexity, hiding the state of whether the enriched metadata is loaded or not.
-/// Since this view is the only view generating link preview metadata, it also manages the cache.
+/// A SwiftUI link card that uses LinkPresentation for metadata, without embedding LPLinkView.
 struct LinkPreviewView: View {
+    @Environment(\.chatTheme) private var theme
 
-    @State var metadata: LinkPreviewMetadata
+    @State private var metadata: LinkPreviewMetadata
     private static let cache = LinkMetadataCache()
 
     init(url: URL) {
-        guard let cached = Self.cache.get(forURL: url) else {
+        if let cached = Self.cache.get(forURL: url) {
+            metadata = .enriched(with: cached)
+        } else {
             metadata = .placeholder(for: url)
-            return
         }
-        metadata = .enriched(with: cached)
+    }
+
+    private var url: URL? {
+        switch metadata {
+        case .placeholder(let url): url
+        case .enriched(let metadata): metadata.url ?? metadata.originalURL
+        }
+    }
+
+    private var title: String {
+        switch metadata {
+        case .placeholder(let url): url.host ?? url.absoluteString
+        case .enriched(let metadata): metadata.title ?? metadata.url?.host ?? metadata.originalURL?.host ?? "Link"
+        }
+    }
+
+    private var subtitle: String? {
+        url?.host
     }
 
     private func fetchMetadata(for url: URL) async {
+        guard case .placeholder = metadata else { return }
         let provider = LPMetadataProvider()
-        let metadata = try? await provider.startFetchingMetadata(for: url)
-        guard let metadata = metadata else {
-            return
-        }
-        self.metadata = .enriched(with: metadata)
-        Self.cache.insert(metadata, forURL: url)
+        guard let fetched = try? await provider.startFetchingMetadata(for: url) else { return }
+        metadata = .enriched(with: fetched)
+        Self.cache.insert(fetched, forURL: url)
     }
 
     var body: some View {
-        // Use ZStack instead of Group as animation modifier doesn't work with Group.
-        ZStack {
-            switch metadata {
-            case .placeholder(let url):
-                PlaceholderOrEnrichedLinkPillView(url: url)
-                    .task {
-                        await fetchMetadata(for: url)
-                    }
-            case .enriched(let metadata):
-                PlaceholderOrEnrichedLinkPillView(metadata: metadata)
+        Group {
+            if let url {
+                Link(destination: url) {
+                    card
+                }
+                .buttonStyle(.plain)
+            } else {
+                card
             }
         }
-        .animation(.default, value: metadata)
+        .task(id: url) {
+            if case .placeholder(let url) = metadata {
+                await fetchMetadata(for: url)
+            }
+        }
+        .animation(.default, value: title)
+    }
+
+    private var card: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "link")
+                .font(.title3)
+                .foregroundStyle(theme.colors.mainTint)
+                .frame(width: 36, height: 36)
+                .background(theme.colors.mainTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                    .foregroundStyle(theme.colors.mainText)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .foregroundStyle(theme.colors.mainCaptionText)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "arrow.up.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(theme.colors.mainCaptionText)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.colors.inputBG, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(theme.colors.mainText.opacity(0.08), lineWidth: 1)
+        }
     }
 }
 

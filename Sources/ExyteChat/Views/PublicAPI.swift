@@ -105,10 +105,9 @@ public extension ChatView {
         return view
     }
 
-    /// Sets the keyboard dismiss mode for the chat list
-    /// - Parameter mode: The keyboard dismiss mode (.interactive, .onDrag, or .none)
-    /// - Default is .none
-    func keyboardDismissMode(_ mode: UIScrollView.KeyboardDismissMode) -> ChatView {
+    /// Sets how scrolling interacts with the software keyboard.
+    /// - Default is `.never`.
+    func keyboardDismissMode(_ mode: ScrollDismissesKeyboardMode) -> ChatView {
         var view = self
         view.chatCustomizationParameters.keyboardDismissMode = mode
         return view
@@ -127,12 +126,12 @@ public extension ChatView {
 
     func contentInsets(top: CGFloat = 0, bottom: CGFloat = 0, left: CGFloat = 0, right: CGFloat = 0) -> ChatView {
         var view = self
-        if type == .conversation {
-            // NOTE: top and bottom are vice versa - because chat is an upside down UITableView
-            view.chatCustomizationParameters.contentInsets = UIEdgeInsets(top: bottom, left: left, bottom: top, right: right)
-        } else {
-            view.chatCustomizationParameters.contentInsets = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
-        }
+        view.chatCustomizationParameters.contentInsets = EdgeInsets(
+            top: top,
+            leading: left,
+            bottom: bottom,
+            trailing: right
+        )
         return view
     }
 
@@ -150,15 +149,15 @@ public extension ChatView {
         return view
     }
 
-    /// UITableView's will display cell delegate calls this closure
-    func onWillDisplayCell(_ closure: @escaping (Message) -> Void) -> ChatView {
+    /// Called when a message enters the visible region of the chat.
+    func onMessageAppear(_ closure: @escaping (Message) -> Void) -> ChatView {
         var view = self
-        view.chatCustomizationParameters.onWillDisplayCell = closure
+        view.chatCustomizationParameters.onMessageAppear = closure
         return view
     }
 
-    /// awaitable updates helper similar in usage to `tableView.performBatchUpdates`
-    func updateTransaction(_ binding: Binding<TableUpdateTransaction?>) -> ChatView {
+    /// Provides a SwiftUI transaction for grouping message-store updates.
+    func updateTransaction(_ binding: Binding<ChatUpdateTransaction?>) -> ChatView {
         var view = self
         view.chatCustomizationParameters.onTransactionReady = { binding.wrappedValue = $0 }
         return view
@@ -298,7 +297,7 @@ public extension ChatView {
         return view
     }
 
-    func setMessageFont(_ font: UIFont) -> ChatView {
+    func setMessageFont(_ font: Font) -> ChatView {
         var view = self
         view.messageCustomizationParameters.font = font
         return view

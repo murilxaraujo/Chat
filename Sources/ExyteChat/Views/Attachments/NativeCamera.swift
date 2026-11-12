@@ -1,6 +1,6 @@
 @preconcurrency import AVFoundation
+import CoreImage
 import SwiftUI
-import UIKit
 
 enum NativeCameraMode: String, CaseIterable {
     case photo
@@ -12,6 +12,7 @@ final class NativeCameraModel: ObservableObject {
     let session = AVCaptureSession()
 
     @Published private(set) var videoDevice: AVCaptureDevice?
+    @Published private(set) var previewImage: CGImage?
     @Published private(set) var isConfigured = false
     @Published private(set) var mode: NativeCameraMode = .photo
     @Published private(set) var isRecording = false
@@ -25,6 +26,9 @@ final class NativeCameraModel: ObservableObject {
     init(onCapture: @escaping (DraftMedia) -> Void) {
         self.onCapture = onCapture
         captureService = NativeCameraCaptureService(session: session)
+        captureService.setPreviewImageHandler { [weak self] image in
+            self?.previewImage = image
+        }
     }
 
     func start() {
@@ -53,6 +57,7 @@ final class NativeCameraModel: ObservableObject {
     func stop() {
         isActive = false
         acceptsCaptureResults = false
+        previewImage = nil
         captureService.stopSession()
     }
 
@@ -142,19 +147,33 @@ final class NativeCameraModel: ObservableObject {
     }
 }
 
-private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRecordingDelegate, @unchecked Sendable {
+private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRecordingDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let session: AVCaptureSession
     private let sessionQueue = DispatchQueue(label: "com.exyte.chat.camera-session")
+    private let videoQueue = DispatchQueue(label: "com.exyte.chat.camera-preview")
     private let photoOutput = AVCapturePhotoOutput()
     private let movieOutput = AVCaptureMovieFileOutput()
+    private let videoDataOutput = AVCaptureVideoDataOutput()
+    private let imageContext = CIContext()
     private var audioInput: AVCaptureDeviceInput?
     private var captureAngle: CGFloat = 0
+    private var previewImageHandler: (@MainActor @Sendable (CGImage?) -> Void)?
     private var photoDelegates: [Int64: PhotoCaptureDelegate] = [:]
     private var recordingCompletion: (@MainActor @Sendable (URL?, String?) -> Void)?
     private var stopSessionAfterRecording = false
 
     init(session: AVCaptureSession) {
         self.session = session
+        super.init()
+        videoDataOutput.alwaysDiscardsLateVideoFrames = true
+        videoDataOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+        videoDataOutput.setSampleBufferDelegate(self, queue: videoQueue)
+    }
+
+    func setPreviewImageHandler(_ handler: @escaping @MainActor @Sendable (CGImage?) -> Void) {
+        previewImageHandler = handler
     }
 
     func configure(completion: @escaping @MainActor @Sendable (CameraDeviceReference?, String?) -> Void) {
@@ -178,9 +197,13 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
                     guard self.session.canAddOutput(self.photoOutput) else {
                         throw NativeCameraError.cannotAddPhotoOutput
                     }
+                    guard self.session.canAddOutput(self.videoDataOutput) else {
+                        throw NativeCameraError.cannotAddVideoDataOutput
+                    }
 
                     self.session.addInput(input)
                     self.session.addOutput(self.photoOutput)
+                    self.session.addOutput(self.videoDataOutput)
                 } catch {
                     self.session.commitConfiguration()
                     throw error
@@ -326,10 +349,26 @@ private final class NativeCameraCaptureService: NSObject, AVCaptureFileOutputRec
     }
 
     private func applyCaptureRotationAngle() {
-        for output in [photoOutput, movieOutput] {
+        for output in [photoOutput, movieOutput, videoDataOutput] {
             guard let connection = output.connection(with: .video),
                   connection.isVideoRotationAngleSupported(captureAngle) else { continue }
             connection.videoRotationAngle = captureAngle
+        }
+    }
+
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        guard output === videoDataOutput,
+              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
+        guard let cgImage = imageContext.createCGImage(image, from: image.extent) else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.previewImageHandler?(cgImage)
         }
     }
 
@@ -430,6 +469,7 @@ private enum NativeCameraError: LocalizedError {
     case cannotAddMicrophoneInput
     case microphoneUnavailable
     case cannotAddPhotoOutput
+    case cannotAddVideoDataOutput
     case cannotAddMovieOutput
     case photoCaptureUnavailable
     case videoCaptureUnavailable
@@ -442,6 +482,7 @@ private enum NativeCameraError: LocalizedError {
         case .cannotAddMicrophoneInput: "The microphone could not be connected."
         case .microphoneUnavailable: "No microphone is available on this device."
         case .cannotAddPhotoOutput: "Photo capture is unavailable."
+        case .cannotAddVideoDataOutput: "Camera preview is unavailable."
         case .cannotAddMovieOutput: "Video capture is unavailable."
         case .photoCaptureUnavailable: "Photo capture is not ready."
         case .videoCaptureUnavailable: "Video capture is not ready."
@@ -454,6 +495,7 @@ struct NativeCameraView: View {
     let onCancel: () -> Void
 
     @StateObject private var model: NativeCameraModel
+    @State private var rotationObserver = CameraRotationObserver()
 
     init(onCapture: @escaping (DraftMedia) -> Void, onCancel: @escaping () -> Void) {
         self.onCancel = onCancel
@@ -463,7 +505,7 @@ struct NativeCameraView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            CameraPreview(session: model.session, videoDevice: model.videoDevice, model: model)
+            CameraPreview(image: model.previewImage)
                 .ignoresSafeArea()
 
             VStack {
@@ -514,6 +556,10 @@ struct NativeCameraView: View {
         .preferredColorScheme(.dark)
         .onAppear(perform: model.start)
         .onDisappear(perform: model.stop)
+        .onChange(of: model.videoDevice?.uniqueID) { _, _ in
+            guard let videoDevice = model.videoDevice else { return }
+            rotationObserver.update(device: videoDevice, model: model)
+        }
         .alert("Camera", isPresented: Binding(
             get: { model.alertMessage != nil },
             set: { if !$0 { model.alertMessage = nil } }
@@ -537,80 +583,41 @@ struct NativeCameraView: View {
     }
 }
 
-@MainActor
-private struct CameraPreview: UIViewRepresentable {
-    let session: AVCaptureSession
-    let videoDevice: AVCaptureDevice?
-    let model: NativeCameraModel
+private struct CameraPreview: View {
+    let image: CGImage?
 
-    func makeUIView(context: Context) -> CameraPreviewUIView {
-        let view = CameraPreviewUIView()
-        view.previewLayer.videoGravity = .resizeAspectFill
-        view.previewLayer.session = session
-        return view
-    }
-
-    func updateUIView(_ view: CameraPreviewUIView, context: Context) {
-        if view.previewLayer.session !== session {
-            view.previewLayer.session = session
+    var body: some View {
+        GeometryReader { geometry in
+            Group {
+                if let image {
+                    Image(image, scale: 1, orientation: .up, label: Text("Camera preview"))
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.black
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
         }
-        if let videoDevice {
-            context.coordinator.rotationObserver.update(device: videoDevice, previewLayer: view.previewLayer, model: model)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    @MainActor
-    final class Coordinator {
-        let rotationObserver = CameraRotationObserver()
-    }
-}
-
-private final class CameraPreviewUIView: UIView {
-    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-
-    var previewLayer: AVCaptureVideoPreviewLayer {
-        layer as! AVCaptureVideoPreviewLayer
-    }
-}
-
-private final class WeakCameraPreviewLayer: @unchecked Sendable {
-    weak var value: AVCaptureVideoPreviewLayer?
-
-    init(_ value: AVCaptureVideoPreviewLayer) {
-        self.value = value
+        .accessibilityHidden(true)
     }
 }
 
 @MainActor
 private final class CameraRotationObserver {
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
-    private var previewAngleObservation: NSKeyValueObservation?
     private var captureAngleObservation: NSKeyValueObservation?
     private var observedDeviceID: String?
 
-    func update(device: AVCaptureDevice, previewLayer: AVCaptureVideoPreviewLayer, model: NativeCameraModel) {
+    func update(device: AVCaptureDevice, model: NativeCameraModel) {
         guard observedDeviceID != device.uniqueID else { return }
         observedDeviceID = device.uniqueID
-        previewAngleObservation?.invalidate()
         captureAngleObservation?.invalidate()
 
-        let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: previewLayer)
+        let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
         rotationCoordinator = coordinator
-        Self.applyPreviewAngle(coordinator.videoRotationAngleForHorizonLevelPreview, to: previewLayer)
         model.updateCaptureRotationAngle(coordinator.videoRotationAngleForHorizonLevelCapture)
-
-        let previewLayerReference = WeakCameraPreviewLayer(previewLayer)
-        previewAngleObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.initial, .new]) { _, change in
-            guard let angle = change.newValue else { return }
-            DispatchQueue.main.async {
-                guard let previewLayer = previewLayerReference.value else { return }
-                CameraRotationObserver.applyPreviewAngle(angle, to: previewLayer)
-            }
-        }
 
         captureAngleObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) { _, change in
             guard let angle = change.newValue else { return }
@@ -618,11 +625,5 @@ private final class CameraRotationObserver {
                 model.updateCaptureRotationAngle(angle)
             }
         }
-    }
-
-    private static func applyPreviewAngle(_ angle: CGFloat, to previewLayer: AVCaptureVideoPreviewLayer) {
-        guard let connection = previewLayer.connection,
-              connection.isVideoRotationAngleSupported(angle) else { return }
-        connection.videoRotationAngle = angle
     }
 }

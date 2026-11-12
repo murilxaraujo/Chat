@@ -103,7 +103,7 @@ struct ReactionBubble: View {
     @Environment(\.chatTheme) var theme
     
     let reaction: Reaction
-    let font: UIFont
+    let font: Font
 
     static let padding: CGFloat = 6
 
@@ -129,7 +129,7 @@ struct ReactionBubble: View {
     
     var body: some View {
         Text(reaction.emoji ?? "?")
-            .font(Font(font))
+            .font(font)
             .opacity(opacity)
             .foregroundStyle(theme.colors.messageText(reaction.user.type))
             .padding(ReactionBubble.padding)

@@ -1,18 +1,37 @@
-//
-//  ShareSheet.swift
-//  Chat
-//
-
+import Foundation
 import SwiftUI
 
-struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
+struct ShareSheet: View {
+    @Environment(\.dismiss) private var dismiss
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    let activityItems: [URL]
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.largeTitle)
+                    .foregroundStyle(.tint)
+
+                Text(activityItems.count == 1 ? "Ready to share" : "Ready to share \(activityItems.count) files")
+                    .font(.headline)
+
+                ShareLink(items: activityItems, subject: Text("Attachments")) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(24)
+            .navigationTitle("Share")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 enum AttachmentSharing {
@@ -27,7 +46,6 @@ enum AttachmentSharing {
             let fileExtension = response.suggestedFilename.flatMap { ($0 as NSString).pathExtension.nonEmpty }
                 ?? attachment.full.pathExtension.nonEmpty
                 ?? (attachment.type == .video ? "mp4" : "jpg")
-
             let destinationURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension(fileExtension)
@@ -39,8 +57,7 @@ enum AttachmentSharing {
         }
     }
 
-    /// Resolves local, shareable file URLs for multiple attachments, downloading remote ones concurrently.
-    /// Attachments that fail to download are skipped.
+    /// Resolves local, shareable file URLs for multiple attachments concurrently.
     static func prepareForSharing(_ attachments: [Attachment]) async -> [URL] {
         await withTaskGroup(of: (Int, URL?).self) { group in
             for (index, attachment) in attachments.enumerated() {
@@ -48,6 +65,7 @@ enum AttachmentSharing {
                     (index, await prepareForSharing(attachment))
                 }
             }
+
             var urlsByIndex = [Int: URL]()
             for await (index, url) in group {
                 urlsByIndex[index] = url

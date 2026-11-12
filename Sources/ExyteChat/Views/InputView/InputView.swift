@@ -73,7 +73,7 @@ struct InputView: View {
             viewModel.setRecorderSettings(recorderSettings: recorderSettings)
         }
         .onDrag(towards: .bottom, ofAmount: 100...) {
-            keyboardState.resignFirstResponder()
+            keyboardState.dismissKeyboard()
         }
     }
 

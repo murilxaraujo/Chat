@@ -56,7 +56,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
     var type: ChatType
     var sections: [MessagesSection]
-    var ids: [String]
     var didSendMessage: (DraftMessage) -> Void
     var didUpdateAttachmentStatus: ((AttachmentUploadUpdate) -> Void)?
 
@@ -87,7 +86,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
     @State private var pendingScrollTo: ScrollToParams?
     @State private var isScrolledToBottom: Bool = true
-    @State private var tableContentHeight: CGFloat = 0
 
     @State private var cellFrames = [String: CGRect]()
     /// Used to prevent the MainView from responding to keyboard changes while the Menu is active
@@ -102,36 +100,45 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     }
 
     var mainView: some View {
-        VStack(spacing: 0) {
-            if chatCustomizationParameters.showNetworkConnectionProblem, !networkMonitor.isConnected {
-                waitingForNetwork
-            }
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                if chatCustomizationParameters.showNetworkConnectionProblem, !networkMonitor.isConnected {
+                    waitingForNetwork
+                }
 
-            if chatCustomizationParameters.isListAboveInputView {
-                listWithButton
-                if let builder = betweenListAndInputViewBuilder {
-                    builder()
+                if chatCustomizationParameters.isListAboveInputView {
+                    listWithButton
+                    if let builder = betweenListAndInputViewBuilder {
+                        builder()
+                    }
+                    inputView
+                } else {
+                    inputView
+                    if let builder = betweenListAndInputViewBuilder {
+                        builder()
+                    }
+                    listWithButton
                 }
-                inputView
-            } else {
-                inputView
-                if let builder = betweenListAndInputViewBuilder {
-                    builder()
-                }
-                listWithButton
             }
+            .background(chatBackground())
+            .sizeGetter($chatSize)
+            .environment(\.chatSize, chatSize)
+            .environment(\.chatLocalization, chatCustomizationParameters.localization)
+            .environment(\.chatSafeAreaInsets, geometry.safeAreaInsets)
+            .environmentObject(keyboardState)
         }
-        // Used to prevent ChatView movement during Emoji Keyboard invocation
-        .ignoresSafeArea(isShowingMenu ? .keyboard : [])
-        .background(chatBackground())
-        .sizeGetter($chatSize)
-        .environment(\.chatSize, chatSize)
-        .environment(\.chatLocalization, chatCustomizationParameters.localization)
-        .environmentObject(keyboardState)
     }
 
     private var mainViewWithBehaviors: some View {
         mainView
+            .onAppear {
+                keyboardState.configure(isShown: globalFocusState.focus != nil) {
+                    globalFocusState.focus = nil
+                }
+            }
+            .onChange(of: globalFocusState.focus) { _, focus in
+                keyboardState.update(isShown: focus != nil)
+            }
             .onChange(of: inputViewModel.text) { _ , newValue in
                 inputViewCustomizationParameters.onInputTextChange?(newValue)
             }
@@ -181,11 +188,17 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             } message: {
                 Text("This device does not have a camera.")
             }
-            .sheet(isPresented: $inputViewModel.showDocumentPicker) {
-                DocumentPicker { documents in
-                    inputViewModel.attachments.documents.append(contentsOf: documents)
+            .fileImporter(
+                isPresented: $inputViewModel.showDocumentPicker,
+                allowedContentTypes: [.item],
+                allowsMultipleSelection: true
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    inputViewModel.attachments.documents.append(contentsOf: DocumentImporter.importItems(from: urls))
+                case .failure(let error):
+                    print("[DocumentImporter] Failed to import documents: \(error)")
                 }
-                .ignoresSafeArea()
             }
             .sheet(isPresented: $inputViewModel.showLocationPicker) {
                 LocationPickerView(
@@ -296,15 +309,13 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     
     @ViewBuilder
     var list: some View {
-        UIList(
+        ChatMessageList(
             // MARK: - Core
 
             viewModel: viewModel,
-            inputViewModel: inputViewModel,
 
             pendingScrollTo: $pendingScrollTo,
             isScrolledToBottom: $isScrolledToBottom,
-            tableContentHeight: $tableContentHeight,
 
             // MARK: - View builders
 
@@ -316,20 +327,13 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 
             type: type,
             sections: sections,
-            ids: ids,
 
             // MARK: - Customization
 
             chatParams: chatCustomizationParameters,
             messageParams: messageCustomizationParameters
         )
-        .applyIf(!chatCustomizationParameters.isScrollEnabled) {
-            $0.frame(height: tableContentHeight)
-        }
-        .onStatusBarTap {
-            self.pendingScrollTo = ScrollToParams(.oldestMessage)
-        }
-        .transparentNonAnimatingFullScreenCover(item: $viewModel.messageMenuRow) {
+        .transparentFullScreenCover(item: $viewModel.messageMenuRow) {
             if let row = viewModel.messageMenuRow {
                 messageMenu(row)
                     .onAppear(perform: showMessageMenu)
@@ -488,7 +492,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     private func chatBackground() -> some View {
         Group {
             if let background = theme.images.background {
-                switch (isLandscape(), colorScheme) {
+                switch (chatSize.width > chatSize.height, colorScheme) {
                 case (true, .dark):
                     background.landscapeBackgroundDark
                         .resizable()
@@ -512,10 +516,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 theme.colors.mainBG
             }
         }
-    }
-    
-    private func isLandscape() -> Bool {
-        UIDevice.current.orientation.isLandscape
     }
     
 }
@@ -603,7 +603,6 @@ extension ChatView {
     ) {
         self.type = chatType
         self.sections = ChatView.mapMessages(messages, chatType: chatType, replyMode: replyMode)
-        self.ids = messages.map { $0.id }
         self.didSendMessage = didSendMessage
         self.messageBuilder = messageBuilder
         self.inputViewBuilder = inputViewBuilder

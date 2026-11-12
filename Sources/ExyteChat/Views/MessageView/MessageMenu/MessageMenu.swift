@@ -24,8 +24,9 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     @Environment(\.chatTheme) private var theme
     @Environment(\.dismiss) var dismiss
     @Environment(\.chatSize) private var chatSize
+    @Environment(\.chatSafeAreaInsets) private var safeAreaInsets
 
-    @StateObject private var keyboardState = KeyboardState()
+    @EnvironmentObject private var keyboardState: KeyboardState
     @StateObject var viewModel: ChatViewModel
 
     @Binding var isShowingMenu: Bool
@@ -50,7 +51,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     /// Trailing padding
     var trailingPadding: CGFloat
     /// The font we should use to render our message menu button
-    var font: UIFont? = nil
+    var font: Font? = nil
     /// The duration most of our animations take
     /// - Note: This value is more akin to 'how snappy' the menu feels. Good values are between 0.15 - 0.5
     var animationDuration: Double = 0.3
@@ -124,16 +125,11 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     private var chatViewFrame: CGRect { CGRect(origin: .zero, size: chatSize) }
 
     var maxEntireHeight: CGFloat {
-        chatViewFrame.height - UIApplication.safeArea.top - UIApplication.safeArea.bottom
+        chatViewFrame.height - safeAreaInsets.top - safeAreaInsets.bottom
     }
-    
-    /// Unwraps and returns our optional `UIFont` as a `Font` or `nil`
+
     var getFont: Font? {
-        if let font {
-            return Font(font)
-        } else {
-            return nil
-        }
+        font
     }
     
     var shouldShowReactionSelectionView: Bool {
@@ -164,7 +160,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
                 ReactionOverview(viewModel: viewModel, message: message, width: reactionOverviewWidth, backgroundColor: theme.colors.messageFriendBG, inScrollView: false)
                     .frame(width: reactionOverviewWidth)
                     .maxHeightGetter($reactionOverviewHeight)
-                    .offset(y: UIApplication.safeArea.top)
+                    .offset(y: safeAreaInsets.top)
                     .transition(defaultTransition)
                     .opacity(messageMenuOpacity)
             }
@@ -180,7 +176,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .edgesIgnoringSafeArea(.all)
+        .ignoresSafeArea()
         .background(
             ZStack {
                 Rectangle()
@@ -188,11 +184,11 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
                 Rectangle()
                     .fill(.primary.opacity(0.1))
             }
-            .edgesIgnoringSafeArea(.all)
+            .ignoresSafeArea()
             .opacity(backgroundOpacity)
             .onTapGesture {
                 if viewState == .keyboard {
-                    keyboardState.resignFirstResponder()
+                    keyboardState.dismissKeyboard()
                     transitionViewState(to: .ready)
                 } else {
                     dismissSelf()
@@ -210,9 +206,11 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
                 transitionViewState(to: .ready)
             }
         }
-        .onChange(of: keyboardState.keyboardFrame) {
-            if viewState == .ready, keyboardState.isShown {
+        .onChange(of: keyboardState.isShown) { _, isShown in
+            if viewState == .ready, isShown {
                 transitionViewState(to: .keyboard)
+            } else if viewState == .keyboard, !isShown {
+                transitionViewState(to: .ready)
             }
         }
         .alert(pendingDestructiveAction?.title() ?? "Delete", isPresented: $showDestructiveAlert) {
@@ -246,7 +244,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             
             /// Set our view state variables
             reactionSelectionBottomPadding = positionInUserGroup == .middle || positionInUserGroup == .last ? 4 : 0
-            reactionOverviewWidth = chatViewFrame.width - UIApplication.safeArea.leading - UIApplication.safeArea.trailing
+            reactionOverviewWidth = chatViewFrame.width - safeAreaInsets.leading - safeAreaInsets.trailing
             reactionOverviewIsVisible = shouldShowReactionOverviewView
             reactionSelectionIsVisible = shouldShowReactionSelectionView
             menuIsVisible = true
@@ -272,9 +270,9 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             if chatSize.width > chatSize.height {
                 switch alignment {
                 case .left:
-                    horizontalOffset = UIApplication.safeArea.leading
+                    horizontalOffset = safeAreaInsets.leading
                 case .right:
-                    horizontalOffset = -UIApplication.safeArea.trailing
+                    horizontalOffset = -safeAreaInsets.trailing
                 }
             }
             messageFrame = .init(
@@ -365,7 +363,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
                 return lastVerticalOffset
             }
             /// If the messageMenuStyle is a scrollView then we place it in the middle of the screen
-            if case .scrollView(let height) = messageMenuStyle { return (height / 2) + UIApplication.safeArea.top }
+            if case .scrollView(let height) = messageMenuStyle { return (height / 2) + safeAreaInsets.top }
 
             /// Otherwise, calculate our offsets and move to our target
             let rHeight: CGFloat = reactionSelectionIsVisible ? calculateMessageMenuHeight(including: [.reactionSelection]) : 0
@@ -374,12 +372,12 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
 
             var ty: CGFloat = messageFrame.midY - (messageTopPadding / 2)
 
-            if (messageFrame.minY - rHeight) < UIApplication.safeArea.top + rOHeight {
-                let off = (UIApplication.safeArea.top + rOHeight) - (messageFrame.minY - rHeight)
+            if (messageFrame.minY - rHeight) < safeAreaInsets.top + rOHeight {
+                let off = (safeAreaInsets.top + rOHeight) - (messageFrame.minY - rHeight)
                 /// We need to move the message down to make room for the views above it
                 ty += off
-            } else if messageFrame.maxY + mHeight > chatViewFrame.height - UIApplication.safeArea.bottom {
-                let off = messageFrame.maxY + mHeight + UIApplication.safeArea.bottom - chatViewFrame.height
+            } else if messageFrame.maxY + mHeight > chatViewFrame.height - safeAreaInsets.bottom {
+                let off = messageFrame.maxY + mHeight + safeAreaInsets.bottom - chatViewFrame.height
                 /// We need to move the message up to make room for the menu buttons below it
                 ty -= off
             }
@@ -393,19 +391,19 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             /// If the messageMenuStyle is a scrollView then we place it in the middle of the screen
             if case .scrollView(let height) = messageMenuStyle {
                 /// Update our max height
-                messageMenuStyle = .scrollView(height: height - keyboardState.keyboardFrame.height + UIApplication.safeArea.bottom)
+                messageMenuStyle = .scrollView(height: maxEntireHeight)
                 /// And our vertical offset
-                return verticalOffset - (keyboardState.keyboardFrame.height / 2) + (UIApplication.safeArea.bottom / 2)
+                return safeAreaInsets.top + maxEntireHeight / 2
             } else {
                 /// Check to make sure that we don't need a scroll view now that we have less realestate
                 let contentHeight = calculateMessageMenuHeight(including: [.message, .reactionSelection])
-                if contentHeight + UIApplication.safeArea.top > keyboardState.keyboardFrame.minY {
+                if contentHeight + safeAreaInsets.top > chatViewFrame.height - safeAreaInsets.bottom {
                     /// Our message is too large to fit in our available screen space
                     /// We *should* place the content in a ScrollView
                     /// But we don't due to needing to preserve the ReactionSelection's view state
                     /// Therefore we settle with clipping the bottom of the content behind the keyboard
                     /// Pin the view to the top of the screen
-                    return UIApplication.safeArea.top + (contentHeight / 2)
+                    return safeAreaInsets.top + (contentHeight / 2)
                 }
             }
             
@@ -417,9 +415,10 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             /// Keep the message stationary while we hide / remove the menu
             ty -= mHeight / 2
             /// Provide a bit of padding to lift the view off of the keyboard
-            let bottomPadding = UIApplication.safeArea.bottom / 2
-            if messageMenuFrame.maxY - mHeight + bottomPadding > keyboardState.keyboardFrame.minY {
-                let off = messageMenuFrame.maxY - mHeight + bottomPadding - keyboardState.keyboardFrame.minY
+            let bottomPadding = safeAreaInsets.bottom / 2
+            let keyboardTop = chatViewFrame.height - safeAreaInsets.bottom
+            if messageMenuFrame.maxY - mHeight + bottomPadding > keyboardTop {
+                let off = messageMenuFrame.maxY - mHeight + bottomPadding - keyboardTop
                 /// We need to move the message up so it doesn't get hidden by the keyboard
                 ty -= off
             }
@@ -491,8 +490,8 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             }
             
             mainButton()
-                .frame(maxWidth: chatViewFrame.width - UIApplication.safeArea.leading - UIApplication.safeArea.trailing)
-                .offset(x: (alignment == .right) ? UIApplication.safeArea.trailing : -UIApplication.safeArea.leading)
+                .frame(maxWidth: chatViewFrame.width - safeAreaInsets.leading - safeAreaInsets.trailing)
+                .offset(x: (alignment == .right) ? safeAreaInsets.trailing : -safeAreaInsets.leading)
                 .allowsHitTesting(false)
             
             if menuIsVisible {
@@ -502,7 +501,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
         }
         .overflowContainer(messageMenuStyle, viewState: viewState, onTap: {
             if viewState == .keyboard {
-                keyboardState.resignFirstResponder()
+                keyboardState.dismissKeyboard()
                 transitionViewState(to: .ready)
             } else {
                 dismissSelf()
@@ -614,7 +613,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
     }
 
     private func dismissSelf(_ rt: ReactionType? = nil) {
-        if keyboardState.isShown { keyboardState.resignFirstResponder() }
+        if keyboardState.isShown { keyboardState.dismissKeyboard() }
         transitionViewState(to: .dismiss)
         let delay = didReact ? Int(animationDuration * 1333) : Int(animationDuration * 1000)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delay)) {
@@ -673,14 +672,14 @@ extension MessageMenu {
         Rectangle()
             .fill(.red)
             .opacity(0.3)
-            .frame(width: chatViewFrame.width, height: UIApplication.safeArea.top)
-            .position(x: chatViewFrame.midX, y: UIApplication.safeArea.top / 2)
+            .frame(width: chatViewFrame.width, height: safeAreaInsets.top)
+            .position(x: chatViewFrame.midX, y: safeAreaInsets.top / 2)
         // Bottom Safe Area
         Rectangle()
             .fill(.red)
             .opacity(0.3)
-            .frame(width: chatViewFrame.width, height: UIApplication.safeArea.bottom)
-            .position(x: chatViewFrame.midX, y: chatViewFrame.height - (UIApplication.safeArea.bottom / 2))
+            .frame(width: chatViewFrame.width, height: safeAreaInsets.bottom)
+            .position(x: chatViewFrame.midX, y: chatViewFrame.height - (safeAreaInsets.bottom / 2))
     }
 }
 
