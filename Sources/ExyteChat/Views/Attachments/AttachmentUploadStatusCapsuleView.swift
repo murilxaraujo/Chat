@@ -25,3 +25,12 @@ struct AttachmentUploadStatusCapsuleView: View {
         }
     }
 }
+
+#Preview("Upload status") {
+    VStack(spacing: 12) {
+        AttachmentUploadStatusCapsuleView()
+        AttachmentUploadStatusCapsuleView(68)
+    }
+    .padding()
+    .background(Color.gray.opacity(0.15))
+}

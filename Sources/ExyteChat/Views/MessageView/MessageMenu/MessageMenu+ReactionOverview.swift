@@ -128,8 +128,7 @@ struct ReactionOverview: View {
     }
 }
 
-#if swift(>=6.0)
-    #Preview {
+#Preview {
         let john = User(id: "john", name: "John", avatarURL: nil, isCurrentUser: true)
         let stan = User(id: "stan", name: "Stan", avatarURL: nil, isCurrentUser: false)
         let sally = User(id: "sally", name: "Sally", avatarURL: nil, isCurrentUser: false)
@@ -164,5 +163,4 @@ struct ReactionOverview: View {
             backgroundColor: Color.gray.opacity(0.1),
             inScrollView: false
         )
-    }
-#endif
+}

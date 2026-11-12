@@ -575,3 +575,49 @@ extension View {
 //        }
 //    }
 //#endif
+
+#Preview("Message bubbles") {
+    let sam = User(id: "sam", name: "Sam Rivera", avatarURL: nil, isCurrentUser: false)
+    let alex = User(id: "alex", name: "Alex Morgan", avatarURL: nil, isCurrentUser: true)
+    let viewModel = ChatViewModel()
+    let params = MessageCustomizationParameters(shouldShowPreviewForLink: { _ in false })
+
+    VStack(alignment: .leading, spacing: 12) {
+        MessageView(
+            viewModel: viewModel,
+            message: Message(
+                id: "incoming-preview",
+                user: sam,
+                text: "Hey! I shared the notes from our design review.",
+                reactions: [
+                    Reaction(user: sam, type: .emoji("✨"), status: .sent),
+                    Reaction(user: alex, type: .emoji("👍"), status: .sent)
+                ]
+            ),
+            positionInUserGroup: .single,
+            positionInMessagesSection: .single,
+            chatType: .conversation,
+            params: params,
+            isDisplayingMessageMenu: false
+        )
+
+        MessageView(
+            viewModel: viewModel,
+            message: Message(
+                id: "outgoing-preview",
+                user: alex,
+                status: .readBy([]),
+                text: "Thanks! I’ll take a look this afternoon."
+            ),
+            positionInUserGroup: .single,
+            positionInMessagesSection: .single,
+            chatType: .conversation,
+            params: params,
+            isDisplayingMessageMenu: false
+        )
+    }
+    .padding(.vertical, 20)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .background(Color.gray.opacity(0.08))
+    .environment(\.chatSize, CGSize(width: 390, height: 844))
+}

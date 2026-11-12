@@ -221,3 +221,17 @@ struct AsyncImageView: View {
         }
     }
 }
+
+#Preview("Document attachment") {
+    AttachmentCell(
+        attachment: Attachment(
+            id: "preview-document",
+            url: URL(fileURLWithPath: "/Project brief.pdf"),
+            type: .document,
+            fileName: "Project brief.pdf"
+        ),
+        size: CGSize(width: 120, height: 112),
+        onTap: { _, _ in }
+    )
+    .padding()
+}

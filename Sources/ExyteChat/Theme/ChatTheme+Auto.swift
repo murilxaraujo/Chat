@@ -18,7 +18,7 @@ extension View {
     }
 }
 
-// MARK: iOS 18+ Auto Themes Based on Accent Color
+// MARK: Auto Themes Based on Accent Color
 
 extension View {
     /// Creates and applies a `ChatTheme` to your `ChatView` based around the provided `color`
@@ -29,7 +29,6 @@ extension View {
     ///
     /// - Note: If you're using a custom color and you want the exact color to come through, try disabling `improveContrast` but be sure the text is still legible.
     /// - Note: By default, this method mixes your theme `color` into the `ChatView`'s default background, if you don't want this behavior, you can set `background` to one of `.systemDefault`, or `.static(Color)`.
-    @available(iOS 18.0, *)
     public func chatTheme(themeColor ac: Color, background: ThemedBackgroundStyle = .mixedWithAccentColor(), improveContrast: Bool = true) -> some View {
         let accentColor: Color
         if improveContrast {
@@ -54,7 +53,6 @@ extension Color {
     }
 }
 
-@available(iOS 18.0, *)
 public enum ThemedBackgroundStyle {
     /// The default system background color
     case systemDefault
@@ -92,7 +90,6 @@ public enum ThemedBackgroundStyle {
     }
 }
 
-@available(iOS 18.0, *)
 internal struct ThemedChatView: ViewModifier {
     var accentColor: Color
     var background: ThemedBackgroundStyle
@@ -103,12 +100,3 @@ internal struct ThemedChatView: ViewModifier {
             .chatTheme(ChatTheme(accentColor: accentColor, background: background, improveContrast: improveContrast))
     }
 }
-
-// stub for earlier versions
-#if swift(<6.0)
-extension Color {
-    func mix(with color: Color, by: CGFloat) -> Color {
-        return color
-    }
-}
-#endif

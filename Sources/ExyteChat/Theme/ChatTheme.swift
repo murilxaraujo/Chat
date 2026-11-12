@@ -8,32 +8,9 @@
 import SwiftUI
 
 public extension EnvironmentValues {
-    #if swift(>=6.0)
     @Entry var chatTheme = ChatTheme()
     @Entry var chatLocalization = ChatLocalization.defaultLocalization
-    #else
-    var chatTheme: ChatTheme {
-        get { self[ChatThemeKey.self] }
-        set { self[ChatThemeKey.self] = newValue }
-    }
-
-    var chatLocalization: ChatLocalization {
-        get { self[ChatLocalizationKey.self] }
-        set { self[ChatLocalizationKey.self] = newValue }
-    }
-    #endif
 }
-
-// Define keys only for older versions
-#if swift(<6.0)
-@preconcurrency public struct ChatThemeKey: EnvironmentKey {
-    public static let defaultValue = ChatTheme()
-}
-
-public struct ChatLocalizationKey: EnvironmentKey {
-    public static let defaultValue = ChatLocalization.defaultLocalization
-}
-#endif
 
 extension View {
 
@@ -81,7 +58,6 @@ public struct ChatTheme: Sendable {
         )
     }
     
-    @available(iOS 18.0, *)
     internal init(accentColor: Color, background: ThemedBackgroundStyle = .mixedWithAccentColor(), improveContrast: Bool) {
         let backgroundColor: Color = background.getBackgroundColor(withAccent: accentColor, improveContrast: improveContrast)
         let friendMessageColor: Color = background.getFriendMessageColor(improveContrast: improveContrast, background: backgroundColor)

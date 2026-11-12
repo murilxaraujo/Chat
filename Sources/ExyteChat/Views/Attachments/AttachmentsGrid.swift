@@ -105,13 +105,26 @@ struct AttachmentsPair {
 
 #if DEBUG
 struct AttachmentsGrid_Preview: PreviewProvider {
-    private static let examples = [1, 2, 3, 4, 5, 10]
+    private static let examples: [[Attachment]] = [
+        [Attachment(id: "one", url: URL(fileURLWithPath: "/Project brief.pdf"), type: .document, fileName: "Project brief.pdf")],
+        [
+            Attachment(id: "two-a", url: URL(fileURLWithPath: "/Meeting notes.pdf"), type: .document, fileName: "Meeting notes.pdf"),
+            Attachment(id: "two-b", url: URL(fileURLWithPath: "/Wireframes.sketch"), type: .document, fileName: "Wireframes.sketch")
+        ],
+        [
+            Attachment(id: "many-a", url: URL(fileURLWithPath: "/Roadmap.pdf"), type: .document, fileName: "Roadmap.pdf"),
+            Attachment(id: "many-b", url: URL(fileURLWithPath: "/Research.pdf"), type: .document, fileName: "Research.pdf"),
+            Attachment(id: "many-c", url: URL(fileURLWithPath: "/Prototype.fig"), type: .document, fileName: "Prototype.fig"),
+            Attachment(id: "many-d", url: URL(fileURLWithPath: "/Sprint plan.pdf"), type: .document, fileName: "Sprint plan.pdf"),
+            Attachment(id: "many-e", url: URL(fileURLWithPath: "/Budget.xlsx"), type: .document, fileName: "Budget.xlsx")
+        ]
+    ]
 
     static var previews: some View {
         Group {
-            ForEach(examples, id: \.self) { count in
+            ForEach(examples.indices, id: \.self) { index in
                 ScrollView {
-                    AttachmentsGrid(attachments: .random(count: count), isCurrentUser: true, onTap: { _,_ in } )
+                    AttachmentsGrid(attachments: examples[index], isCurrentUser: true, onTap: { _, _ in })
                         .padding()
                         .background(Color.white)
                 }
@@ -119,31 +132,6 @@ struct AttachmentsGrid_Preview: PreviewProvider {
             .padding()
             .background(Color.secondary)
         }
-    }
-}
-
-extension Array where Element == Attachment {
-    static func random(count: Int) -> [Attachment] {
-        return Swift.Array(repeating: 0, count: count)
-            .map { _ in randomAttachment() }
-    }
-
-    private static func randomAttachment() -> Attachment {
-        if Int.random(in: 0...3) == 0 {
-            return Attachment.randomVideo()
-        } else {
-            return Attachment.randomImage()
-        }
-    }
-}
-
-extension Attachment {
-    static func randomImage() -> Attachment {
-        Attachment(id: UUID().uuidString, url: URL(string: "https://placeimg.com/640/480/sepia")!, type: .image)
-    }
-    // TODO get video, not image
-    static func randomVideo() -> Attachment {
-        Attachment(id: UUID().uuidString, url: URL(string: "https://placeimg.com/640/480/sepia")!, type: .video)
     }
 }
 #endif

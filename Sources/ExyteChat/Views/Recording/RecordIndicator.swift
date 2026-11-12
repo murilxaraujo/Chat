@@ -45,3 +45,13 @@ struct GrowingCircleIndicatorView: View {
     }
 }
 
+#Preview("Recording indicator") {
+    ZStack {
+        RecordIndicator()
+            .foregroundStyle(.red)
+        Circle()
+            .fill(.red)
+            .frame(width: 12, height: 12)
+    }
+    .frame(width: 48, height: 48)
+}

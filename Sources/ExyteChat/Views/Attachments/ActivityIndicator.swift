@@ -29,3 +29,11 @@ struct ActivityIndicator: View {
         }
     }
 }
+
+#Preview("Activity indicators") {
+    HStack(spacing: 24) {
+        ActivityIndicator()
+        ActivityIndicator(size: 28, showBackground: false)
+    }
+    .padding()
+}

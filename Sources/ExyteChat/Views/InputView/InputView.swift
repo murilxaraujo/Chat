@@ -241,3 +241,48 @@ struct InputView: View {
         availableInputs.contains(AvailableInputType.staticLocation) || availableInputs.contains(AvailableInputType.liveLocation)
     }
 }
+
+#Preview("Message composer") {
+    InputViewPreviewHost()
+}
+
+@MainActor
+private struct InputViewPreviewHost: View {
+    @StateObject private var viewModel = InputViewModel()
+    @StateObject private var keyboardState = KeyboardState()
+    @StateObject private var globalFocusState = GlobalFocusState()
+    @State private var lastSentMessage: String?
+
+    private let inputFieldID = UUID()
+    private let previewSize = CGSize(width: 390, height: 160)
+
+    var body: some View {
+        VStack {
+            if let lastSentMessage {
+                Text("Last sent: \(lastSentMessage)")
+                    .font(.caption)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+            }
+            Spacer(minLength: 0)
+            InputView(
+                viewModel: viewModel,
+                inputFieldId: inputFieldID,
+                style: .message,
+                availableInputs: [.text, .media, .document, .staticLocation, .liveLocation, .audio],
+                localization: .defaultLocalization
+            )
+        }
+        .frame(width: previewSize.width, height: previewSize.height)
+        .background(Color.gray.opacity(0.08))
+        .environment(\.chatSize, previewSize)
+        .environmentObject(keyboardState)
+        .environmentObject(globalFocusState)
+        .onAppear {
+            viewModel.didSendMessage = { draft in
+                lastSentMessage = draft.text.isEmpty ? "Attachment sent" : draft.text
+            }
+        }
+    }
+}

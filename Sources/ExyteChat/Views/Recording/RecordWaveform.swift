@@ -179,3 +179,22 @@ struct RecordWaveform: View {
         .fixedSize(horizontal: !addExtraDots, vertical: true)
     }
 }
+
+#Preview("Recording waveform") {
+    VStack(alignment: .leading, spacing: 20) {
+        RecordWaveform(
+            samples: [0.25, 0.6, 0.4, 0.9, 0.5, 0.75, 0.35, 0.95, 0.55, 0.3, 0.7, 0.45],
+            addExtraDots: false
+        )
+        RecordWaveformPlaying(
+            samples: [0.25, 0.6, 0.4, 0.9, 0.5, 0.75, 0.35, 0.95, 0.55, 0.3, 0.7, 0.45],
+            progress: 0.45,
+            color: .blue,
+            addExtraDots: true,
+            progressChangeHandler: { _ in }
+        )
+        .frame(width: 240)
+    }
+    .padding()
+    .environment(\.chatSize, CGSize(width: 390, height: 844))
+}

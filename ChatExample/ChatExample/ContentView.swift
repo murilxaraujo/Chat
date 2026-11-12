@@ -94,20 +94,20 @@ struct ContentView: View {
     private func exampleView(for destination: ExampleDestination) -> some View {
         switch destination {
         case .activeChat:
-            if !theme.isAccent, #available(iOS 18.0, *) {
-                ActiveChatExampleView()
-                    .chatTheme(themeColor: color)
-            } else {
+            if theme.isAccent {
                 ActiveChatExampleView()
                     .chatTheme(accentColor: color, images: theme.images)
+            } else {
+                ActiveChatExampleView()
+                    .chatTheme(themeColor: color)
             }
         case .simpleChat:
-            if !theme.isAccent, #available(iOS 18.0, *) {
-                ChatExampleView()
-                    .chatTheme(themeColor: color)
-            } else {
+            if theme.isAccent {
                 ChatExampleView()
                     .chatTheme(accentColor: color, images: theme.images)
+            } else {
+                ChatExampleView()
+                    .chatTheme(themeColor: color)
             }
         case .comments:
             CommentsExampleView()
@@ -130,8 +130,6 @@ private enum ExampleDestination: Hashable {
 enum ExampleThemeState: String {
     case accent
     case image
-    
-    @available(iOS 18, *)
     case themed
     
     var title:String {
@@ -141,11 +139,7 @@ enum ExampleThemeState: String {
     func next() -> ExampleThemeState {
         switch self {
         case .accent:
-            if #available(iOS 18.0, *) {
-                return .themed
-            } else {
-                return .image
-            }
+            return .themed
         case .themed:
             return .image
         case .image:
@@ -169,9 +163,6 @@ enum ExampleThemeState: String {
     }
     
     var isAccent: Bool {
-        if #available(iOS 18.0, *) {
-            return self != .themed
-        }
-        return true
+        self != .themed
     }
 }

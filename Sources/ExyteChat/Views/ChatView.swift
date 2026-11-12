@@ -572,6 +572,34 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
 //    ]) { draft in }
 //}
 
+#Preview("Conversation") {
+    let alex = User(id: "alex", name: "Alex Morgan", avatarURL: nil, isCurrentUser: true)
+    let sam = User(id: "sam", name: "Sam Rivera", avatarURL: nil, isCurrentUser: false)
+    let today = Date(timeIntervalSince1970: 1_800_000_000)
+
+    ChatView(messages: [
+        Message(
+            id: "preview-1",
+            user: sam,
+            createdAt: today.addingTimeInterval(-180),
+            text: "Hey! Are we still on for coffee today?"
+        ),
+        Message(
+            id: "preview-2",
+            user: alex,
+            status: .readBy([]),
+            createdAt: today.addingTimeInterval(-120),
+            text: "Absolutely. I found a great place near the park."
+        ),
+        Message(
+            id: "preview-3",
+            user: sam,
+            createdAt: today.addingTimeInterval(-60),
+            text: "Perfect — see you there ☕️"
+        )
+    ]) { _ in }
+}
+
 // The designated initializer is kept in this file, alongside the `@State` property
 // declarations it doesn't explicitly assign. Xcode 27's Swift 6.4 compiler emits an
 // unresolvable "variable initialization expression" linker symbol for a `@State`

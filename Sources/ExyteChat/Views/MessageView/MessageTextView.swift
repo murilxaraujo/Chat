@@ -49,23 +49,23 @@ struct MessageTextView: View {
 struct MessageTextView_Previews: PreviewProvider {
     static var previews: some View {
         MessageTextView(
-            attributedText: .init("Look at [this website](https://example.org)"), // no markdown
+            attributedText: .init("A short message with a link: https://example.org"),
             userType: .other,
             params: MessageCustomizationParameters(
-                shouldShowPreviewForLink: { _ in true }
+                shouldShowPreviewForLink: { _ in false }
             ))
         MessageTextView(
             attributedText: "Look at [this website](https://example.org)",
             userType: .other,
             params: MessageCustomizationParameters(
-                shouldShowPreviewForLink: { _ in true }
+                shouldShowPreviewForLink: { _ in false }
             )
         )
         MessageTextView(
             attributedText: "[@Dan](mention://user/123456789) look at [this website](https://example.org)!",
             userType: .other,
             params: MessageCustomizationParameters(
-                shouldShowPreviewForLink: { $0.scheme != "mention" }
+                shouldShowPreviewForLink: { _ in false }
             ))
     }
 }

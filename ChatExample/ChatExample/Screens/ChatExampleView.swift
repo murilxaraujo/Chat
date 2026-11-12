@@ -19,12 +19,7 @@ enum ChatExampleMenuAction: MessageMenuAction {
     func icon() -> Image {
         switch self {
         case .reply: Image(systemName: "arrowshape.turn.up.left")
-        case .edit:
-            if #available(iOS 18.0, macCatalyst 18.0, *) {
-                Image(systemName: "bubble.and.pencil")
-            } else {
-                Image(systemName: "square.and.pencil")
-            }
+        case .edit: Image(systemName: "bubble.and.pencil")
         case .delete: Image(systemName: "trash")
         }
     }

@@ -45,11 +45,7 @@ public enum DefaultMessageMenuAction: MessageMenuAction, Sendable {
         case .reply:
             Image(systemName: "arrowshape.turn.up.left")
         case .edit:
-            if #available(iOS 18.0, macCatalyst 18.0, *) {
-                Image(systemName: "bubble.and.pencil")
-            } else {
-                Image(systemName: "square.and.pencil")
-            }
+            Image(systemName: "bubble.and.pencil")
         case .share:
             Image(systemName: "square.and.arrow.up")
         }

@@ -157,3 +157,20 @@ struct ReactionBubble: View {
             )
     }
 }
+
+#Preview("Reaction bubbles") {
+    let author = User(id: "author", name: "Author", avatarURL: nil, isCurrentUser: false)
+    let currentUser = User(id: "current", name: "You", avatarURL: nil, isCurrentUser: true)
+
+    HStack(spacing: 8) {
+        ReactionBubble(
+            reaction: Reaction(user: author, type: .emoji("✨"), status: .sent),
+            font: .body
+        )
+        ReactionBubble(
+            reaction: Reaction(user: currentUser, type: .emoji("❤️"), status: .sending),
+            font: .body
+        )
+    }
+    .padding()
+}

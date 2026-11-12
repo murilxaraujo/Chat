@@ -34,3 +34,11 @@ struct MessageTimeWithCapsuleView: View {
     }
 }
 
+#Preview("Message timestamps") {
+    VStack(alignment: .leading, spacing: 12) {
+        MessageTimeView(text: "9:41 AM", userType: .other)
+        MessageTimeWithCapsuleView(text: "9:41 AM", isCurrentUser: true)
+    }
+    .padding()
+    .background(Color.gray.opacity(0.12))
+}

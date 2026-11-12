@@ -31,3 +31,9 @@ struct LastReadIndicatorView: View {
         .padding(.bottom, 6)
     }
 }
+
+#Preview("Unread divider") {
+    LastReadIndicatorView()
+        .padding(.vertical, 16)
+        .background(Color.gray.opacity(0.08))
+}
