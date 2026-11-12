@@ -91,7 +91,9 @@ struct LocationPickerView: View {
                 Button(localization.cancelButtonText, role: .cancel) {}
             }
             .navigationTitle(localization.attachLocationText)
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(localization.cancelButtonText) {

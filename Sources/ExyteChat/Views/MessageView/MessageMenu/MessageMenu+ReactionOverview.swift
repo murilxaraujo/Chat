@@ -85,7 +85,7 @@ struct ReactionOverview: View {
     
     @ViewBuilder
      func avatarView(_ user: User) -> some View {
-         if let url = user.avatarURL {
+         if user.avatarURL != nil {
              AvatarImageView(url: user.avatarURL, avatarSize: 32)
                  .contentShape(Circle())
                  .overlay(
@@ -139,7 +139,7 @@ struct ReactionOverview: View {
             message: .init(
                 id: UUID().uuidString,
                 user: stan,
-                status: .read,
+                status: .readBy([]),
                 text: "An example message of great importance",
                 reactions: [
                     Reaction(

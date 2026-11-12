@@ -5,7 +5,7 @@ private struct ChatMessageTypeEnvironmentKey: EnvironmentKey {
 }
 
 private struct MessageCustomizationParamsEnvironmentKey: EnvironmentKey {
-    static let defaultValue = MessageCustomizationParameters()
+    @MainActor static let defaultValue = MessageCustomizationParameters()
 }
 
 private struct ChatSizeEnvironmentKey: EnvironmentKey {

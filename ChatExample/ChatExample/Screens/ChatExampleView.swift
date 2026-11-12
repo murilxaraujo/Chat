@@ -101,12 +101,16 @@ struct ChatExampleView: View {
             }
         }
         .swipeActions(edge: .leading, performsFirstActionWithFullSwipe: true, items: [replyAction])
+        #if os(macOS)
+        .navigationTitle("Simple chat example")
+        #else
         .navigationBarBackButtonHidden()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             backToolbarItem
             titleToolbarItem
         }
+        #endif
         .onChange(of: text) { oldValue, newValue in
             print(newValue)
         }
@@ -140,6 +144,7 @@ struct ChatExampleView: View {
         }
     }
 
+    #if !os(macOS)
     var backToolbarItem: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
             Button {
@@ -189,6 +194,7 @@ struct ChatExampleView: View {
             }
         }
     }
+    #endif
 
     var mainHeaderView: some View {
         Text("This view is on top")

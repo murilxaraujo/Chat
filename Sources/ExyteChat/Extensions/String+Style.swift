@@ -9,7 +9,7 @@ import Foundation
 
 extension String {
 
-    private static var markdownOptions = AttributedString.MarkdownParsingOptions(
+    private static let markdownOptions = AttributedString.MarkdownParsingOptions(
         allowsExtendedAttributes: false,
         interpretedSyntax: .inlineOnlyPreservingWhitespace,
         failurePolicy: .returnPartiallyParsedIfPossible,

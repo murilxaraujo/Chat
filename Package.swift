@@ -6,7 +6,7 @@ let package = Package(
     name: "Chat",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v27)
+        .iOS(.v27), .macOS(.v27)
     ],
     products: [
         .library(
@@ -17,14 +17,11 @@ let package = Package(
     targets: [
         .target(
             name: "ExyteChat",
-            dependencies: [],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            dependencies: []
         ),
         .testTarget(
             name: "ExyteChatTests",
             dependencies: ["ExyteChat"]),
     ],
-    swiftLanguageModes: [.v5]
+    swiftLanguageModes: [.v6]
 )

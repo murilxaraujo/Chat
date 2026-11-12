@@ -41,6 +41,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
 
 # Features
+
+The Swift package supports iOS 27+ and macOS 27+. The included example app remains iOS-only. On macOS, voice recording uses click-to-start/stop controls, the attachment viewer uses Previous/Next controls, and camera capture is available when the Mac has a supported camera.
+
 - Displays your messages with pagination and allows you to create and "send" new messages (sending means calling a closure since user will be the one providing actual API calls)
 - Allows you to pass a custom view builder for messages and input views
 - Uses Apple's Photos picker for multiple photo/video selection and the system camera for capture
@@ -353,9 +356,10 @@ ChatView(messages: viewModel.messages) { draft in
 `audioRecordingMode` - choose how audio recording is triggered:    
     - `.holdToRecord` (default) - hold the mic button to record; slide up to lock into hands-free mode    
     - `.tapToToggle` - tap the mic button once to start recording, tap the stop button to finish. No lock capsule    
+    - On macOS, recording always uses click-to-start/stop controls because hold-and-drag is a touch-oriented interaction.
 `photoPickerSelectionLimit(_:)` - limit the number of photos and videos selected with Apple's `PhotosPicker`; pass `nil` for no limit
 
-The attach button opens a menu for photos/videos, camera, documents, and locations, depending on the inputs enabled with `setAvailableInputs`. Photos and videos are selected with Apple's `PhotosPicker`, which only grants access to items the user selects and does not require broad Photos library authorization. Camera capture uses AVFoundation and requires `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` entries in the host app's `Info.plist`. Selected files are copied to the app's temporary directory and exposed to the send closure as `DraftMedia` values. Upload or move those files to persistent storage before the app needs to retain a draft across launches. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
+The attach button opens a menu for photos/videos, camera, documents, and locations, depending on the inputs enabled with `setAvailableInputs`. Photos and videos are selected with Apple's `PhotosPicker`, which only grants access to items the user selects and does not require broad Photos library authorization. Camera capture uses AVFoundation and requires `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` entries in the host app's `Info.plist`. Audio recording also requires `NSMicrophoneUsageDescription`. For sandboxed macOS apps, enable Camera and Audio Input access in the host app target's entitlements. Selected files are copied to the app's temporary directory and exposed to the send closure as `DraftMedia` values. Upload or move those files to persistent storage before the app needs to retain a draft across launches. The right side of the input field shows a clear ("x") button to quickly clear typed text once the field is non-empty.
 
 ### Customize default colors and images
 You can use `chatTheme` to customize colors and images of default UI. You can pass all/some colors and images:
@@ -483,7 +487,7 @@ To let users attach their location, add `.location` to `setAvailableInputs`:
 .setAvailableInputs([.text, .media, .location])
 ```
 
-Your app's `Info.plist` needs `NSLocationWhenInUseUsageDescription` for the location picker to be able to request permission.
+For iOS, the host app's `Info.plist` needs `NSLocationWhenInUseUsageDescription`. For macOS, it needs `NSLocationUsageDescription`; macOS prompts when the app starts a location service. Add a clear purpose string before enabling location features.
 
 Tapping the attach button opens a map (`LocationPickerView`) where the user can drop a location (tap the map, or tap the location button to center on their current position) and either:
 - **Send this location** - sends a single static location, or
@@ -539,7 +543,7 @@ ChatView(messages: viewModel.messages) { draft in
 }
 ```
 
-**Background limitation:** live updates keep flowing while your app is active or briefly backgrounded, but not indefinitely once the app is fully suspended. To keep broadcasting while backgrounded for longer, your app needs to opt into the `location` `UIBackgroundModes` entry (Info.plist) and the matching background modes capability/entitlement in Xcode - ExyteChat detects this automatically (`allowsBackgroundLocationUpdates` is only set when your app declares that background mode) and otherwise degrades gracefully instead of crashing.
+**Background behavior:** on iOS, live updates keep flowing while your app is active or briefly backgrounded, but not indefinitely once the app is fully suspended. To keep broadcasting while backgrounded for longer, your app needs to opt into the `location` `UIBackgroundModes` entry (Info.plist) and the matching background modes capability in Xcode - ExyteChat detects this automatically and otherwise degrades gracefully. On macOS, the package does not set iOS background-location options; updates continue while macOS is running the app and Core Location permits them.
 
 ## Localization
 

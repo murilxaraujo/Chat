@@ -25,16 +25,21 @@ struct ActiveChatExampleView: View {
         .keyboardDismissMode(.interactively)
         .showUsername(true)
         .messageReactionDelegate(viewModel)
+        #if os(macOS)
+        .navigationTitle("Group chat")
+        #else
         .navigationBarBackButtonHidden()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             backToolbarItem
             titleToolbarItem
         }
+        #endif
         .onAppear(perform: viewModel.onStart)
         .onDisappear(perform: viewModel.onStop)
     }
 
+    #if !os(macOS)
     var backToolbarItem: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
             Button {
@@ -60,4 +65,5 @@ struct ActiveChatExampleView: View {
             }
         }
     }
+    #endif
 }

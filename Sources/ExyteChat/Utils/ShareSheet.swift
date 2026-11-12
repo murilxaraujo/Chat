@@ -24,11 +24,16 @@ struct ShareSheet: View {
             }
             .padding(24)
             .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                #if os(macOS)
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") { dismiss() }
+                }
+                #else
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+                #endif
             }
         }
     }

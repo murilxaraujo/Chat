@@ -18,7 +18,9 @@ final class LocationManager: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     /// Resumed by `locationManagerDidChangeAuthorization` once the user answers the system prompt.
+    #if !os(macOS)
     private var authorizationContinuation: CheckedContinuation<Bool, Never>?
+    #endif
 
     override init() {
         authorizationStatus = manager.authorizationStatus
@@ -38,15 +40,19 @@ final class LocationManager: NSObject, ObservableObject {
     func startUpdatingLiveLocation() {
         Task {
             guard await requestPermission() else { return }
+            #if os(iOS)
             manager.allowsBackgroundLocationUpdates = manager.authorizationStatus == .authorizedAlways && Self.supportsBackgroundLocationUpdates
+            #endif
             startUpdatingLocation(.liveLocation)
         }
     }
 
     func stopUpdatingLiveLocation() {
+        #if os(iOS)
         if Self.supportsBackgroundLocationUpdates {
             manager.allowsBackgroundLocationUpdates = false
         }
+        #endif
         manager.stopUpdatingLocation()
     }
 
@@ -55,6 +61,12 @@ final class LocationManager: NSObject, ObservableObject {
     /// what the caller intends to do with that location.
     private func requestPermission() async -> Bool {
         switch manager.authorizationStatus {
+        #if os(macOS)
+        case .authorized, .notDetermined:
+            // macOS prompts when a location service starts; the host app must provide
+            // NSLocationUsageDescription in its Info.plist.
+            return true
+        #else
         case .authorizedWhenInUse, .authorizedAlways:
             return true
         case .notDetermined:
@@ -62,6 +74,7 @@ final class LocationManager: NSObject, ObservableObject {
                 authorizationContinuation = continuation
                 manager.requestWhenInUseAuthorization()
             }
+        #endif
         default:
             return false
         }
@@ -89,9 +102,12 @@ extension LocationManager: CLLocationManagerDelegate {
         let status = manager.authorizationStatus
         Task { @MainActor in
             self.authorizationStatus = status
+            #if !os(macOS)
             guard status != .notDetermined else { return }
-            self.authorizationContinuation?.resume(returning: status == .authorizedWhenInUse || status == .authorizedAlways)
+            let isAuthorized = status == .authorizedWhenInUse || status == .authorizedAlways
+            self.authorizationContinuation?.resume(returning: isAuthorized)
             self.authorizationContinuation = nil
+            #endif
         }
     }
 

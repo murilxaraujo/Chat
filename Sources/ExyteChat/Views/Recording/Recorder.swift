@@ -13,7 +13,9 @@ final actor Recorder {
     // duration and waveform samples
     typealias ProgressHandler = @Sendable (Double, [CGFloat]) -> Void
 
+    #if os(iOS)
     private let audioSession = AVAudioSession()
+    #endif
     private var audioRecorder: AVAudioRecorder?
     private var recordingTask: Task<Void, Never>?
 
@@ -34,7 +36,7 @@ final actor Recorder {
 
     func startRecording(durationProgressHandler: @escaping ProgressHandler) async -> URL? {
         if !isAllowedToRecordAudio {
-            let granted = await audioSession.requestRecordPermission()
+            let granted = await AVAudioApplication.requestRecordPermission()
             if granted {
                 return startRecordingInternal(durationProgressHandler)
             }
@@ -64,9 +66,11 @@ final actor Recorder {
         let recordingUrl = FileManager.tempDirPath.appendingPathComponent(UUID().uuidString + fileExt)
 
         do {
+            #if os(iOS)
             try audioSession.setCategory(.playAndRecord, mode: .voiceChat)
             try audioSession.overrideOutputAudioPort(.speaker)
             try audioSession.setActive(true)
+            #endif
             audioRecorder = try AVAudioRecorder(url: recordingUrl, settings: settings)
             audioRecorder?.isMeteringEnabled = true
             audioRecorder?.record()
@@ -154,15 +158,5 @@ public struct RecorderSettings : Codable,Hashable {
         self.linearPCMIsFloatKey = linearPCMIsFloatKey
         self.linearPCMIsBigEndianKey = linearPCMIsBigEndianKey
         self.linearPCMIsNonInterleaved = linearPCMIsNonInterleaved
-    }
-}
-
-extension AVAudioSession {
-    func requestRecordPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
     }
 }

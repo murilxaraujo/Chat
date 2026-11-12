@@ -9,44 +9,59 @@ struct ContentView: View {
     
     @State private var theme: ExampleThemeState = .accent
     @State private var color = Color(.exampleBlue)
+    @State private var selectedExample: ExampleDestination?
     
     var body: some View {
+        #if os(macOS)
+        NavigationSplitView {
+            List(selection: $selectedExample) {
+                Section("Basic examples") {
+                    NavigationLink(value: ExampleDestination.activeChat) {
+                        Label("Active chat example", systemImage: "bubble.left.and.bubble.right")
+                    }
+                    NavigationLink(value: ExampleDestination.simpleChat) {
+                        Label("Simple chat example", systemImage: "message")
+                    }
+                    NavigationLink(value: ExampleDestination.comments) {
+                        Label("Simple comments example", systemImage: "text.bubble")
+                    }
+                }
+            }
+            .navigationTitle("Chat examples")
+            .navigationSplitViewColumnWidth(min: 210, ideal: 250)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    themeControls
+                }
+            }
+        } detail: {
+            Group {
+                if let selectedExample {
+                    exampleView(for: selectedExample)
+                } else {
+                    ContentUnavailableView(
+                        "Choose an example",
+                        systemImage: "bubble.left.and.bubble.right",
+                        description: Text("Select a chat example from the sidebar.")
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        #else
         NavigationView {
             List {
                 Section {
                     NavigationLink("Active chat example") {
-                        if !theme.isAccent, #available(iOS 18.0, *) {
-                            ActiveChatExampleView()
-                                .chatTheme(themeColor: color)
-                        } else {
-                            ActiveChatExampleView()
-                                .chatTheme(
-                                    accentColor: color,
-                                    images: theme.images
-                                )
-                        }
+                        exampleView(for: .activeChat)
                     }
                     
                     NavigationLink("Simple chat example") {
-                        if !theme.isAccent, #available(iOS 18.0, *) {
-                            ChatExampleView()
-                                .chatTheme(themeColor: color)
-                        } else {
-                            ChatExampleView()
-                                .chatTheme(
-                                    accentColor: color,
-                                    images: theme.images
-                                )
-                        }
+                        exampleView(for: .simpleChat)
                     }
 
                     NavigationLink("Simple comments example") {
-                        CommentsExampleView()
-                            .chatTheme(.init(colors: .init(
-                                inputSignatureBG: .white.opacity(0.5),
-                                inputSignatureText: .black,
-                                inputSignaturePlaceholderText: .black.opacity(0.7)
-                            )))
+                        exampleView(for: .comments)
                     }
                 } header: {
                     Text("Basic examples")
@@ -56,18 +71,59 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        Button(theme.title) {
-                            theme = theme.next()
-                        }
-                        ColorPicker("", selection: $color)
-                    }
-                    .fixedSize()
+                    themeControls
                 }
             }
         }
         .navigationViewStyle(.stack)
+        #endif
     }
+
+    private var themeControls: some View {
+        HStack {
+            Button(theme.title) {
+                theme = theme.next()
+            }
+            ColorPicker("", selection: $color)
+                .labelsHidden()
+        }
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func exampleView(for destination: ExampleDestination) -> some View {
+        switch destination {
+        case .activeChat:
+            if !theme.isAccent, #available(iOS 18.0, *) {
+                ActiveChatExampleView()
+                    .chatTheme(themeColor: color)
+            } else {
+                ActiveChatExampleView()
+                    .chatTheme(accentColor: color, images: theme.images)
+            }
+        case .simpleChat:
+            if !theme.isAccent, #available(iOS 18.0, *) {
+                ChatExampleView()
+                    .chatTheme(themeColor: color)
+            } else {
+                ChatExampleView()
+                    .chatTheme(accentColor: color, images: theme.images)
+            }
+        case .comments:
+            CommentsExampleView()
+                .chatTheme(.init(colors: .init(
+                    inputSignatureBG: .white.opacity(0.5),
+                    inputSignatureText: .black,
+                    inputSignaturePlaceholderText: .black.opacity(0.7)
+                )))
+        }
+    }
+}
+
+private enum ExampleDestination: Hashable {
+    case activeChat
+    case simpleChat
+    case comments
 }
 
 /// An enum that lets us iterate through the different ChatTheme styles
@@ -119,4 +175,3 @@ enum ExampleThemeState: String {
         return true
     }
 }
-

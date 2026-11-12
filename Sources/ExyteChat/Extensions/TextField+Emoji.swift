@@ -9,7 +9,9 @@ struct EmojiTextField: View {
     var body: some View {
         TextField(placeholder, text: $text)
             .textFieldStyle(.plain)
-            .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+#if os(iOS)
+            .textInputAutocapitalization(.never)
+#endif
     }
 }

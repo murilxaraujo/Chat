@@ -72,13 +72,52 @@ struct FullscreenMediaPages: View {
                 .padding(.trailing, 10)
             }
 
+            #if os(macOS)
+            HStack(spacing: 10) {
+                Button {
+                    moveAttachment(by: -1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .keyboardShortcut(.leftArrow)
+                .disabled(viewModel.index == 0)
+                .accessibilityLabel("Previous attachment")
+
+                Text("\(viewModel.index + 1)/\(viewModel.attachments.count)")
+                    .foregroundColor(tintColor)
+
+                Button {
+                    moveAttachment(by: 1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .keyboardShortcut(.rightArrow)
+                .disabled(viewModel.index >= viewModel.attachments.count - 1)
+                .accessibilityLabel("Next attachment")
+            }
+            #else
             Text("\(viewModel.index + 1)/\(viewModel.attachments.count)")
                 .foregroundColor(tintColor)
+            #endif
         }
         .padding(.bottom, 8)
     }
 
     var mediaPagerView: some View {
+        #if os(macOS)
+        Group {
+            if viewModel.attachments.indices.contains(viewModel.index) {
+                AttachmentsPage(attachment: viewModel.attachments[viewModel.index])
+            }
+        }
+        .environmentObject(viewModel)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onTapGesture {
+            withAnimation {
+                showMinis.toggle()
+            }
+        }
+        #else
         TabView(selection: $viewModel.index) {
             ForEach(viewModel.attachments.enumerated().map({ $0 }), id: \.offset) { (index, attachment) in
                 AttachmentsPage(attachment: attachment)
@@ -93,6 +132,7 @@ struct FullscreenMediaPages: View {
                 showMinis.toggle()
             }
         }
+        #endif
     }
 
     var minisView: some View {
@@ -139,6 +179,12 @@ private struct ShareItem: Identifiable {
 }
 
 private extension FullscreenMediaPages {
+    func moveAttachment(by offset: Int) {
+        let nextIndex = viewModel.index + offset
+        guard viewModel.attachments.indices.contains(nextIndex) else { return }
+        viewModel.index = nextIndex
+    }
+
     func controlIcon(_ image: Image, onTap: @escaping () -> Void) -> some View {
         image
             .resizable()

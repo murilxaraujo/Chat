@@ -175,7 +175,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     await inputViewModel.importSelectedPhotos(selectedItems)
                 }
             }
-            .fullScreenCover(isPresented: $inputViewModel.showCameraPicker) {
+            .adaptiveFullScreenCover(isPresented: $inputViewModel.showCameraPicker) {
                 NativeCameraView(onCapture: { media in
                     inputViewModel.attachments.medias.append(media)
                     inputViewModel.showCameraPicker = false
@@ -211,7 +211,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     inputViewModel.attachments.liveLocation = liveLocation
                 }
             }
-            .fullScreenCover(isPresented: $viewModel.fullscreenAttachmentPresented) {
+            .adaptiveFullScreenCover(isPresented: $viewModel.fullscreenAttachmentPresented) {
                 let attachments = sections.flatMap { section in section.rows.flatMap { $0.message.attachments } }
                 let index = attachments.firstIndex { $0.id == viewModel.fullscreenAttachmentItem?.id }
 
@@ -226,7 +226,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     }
                 )
             }
-            .fullScreenCover(isPresented: $viewModel.fullscreenLocationPresented) {
+            .adaptiveFullScreenCover(isPresented: $viewModel.fullscreenLocationPresented) {
                 if let messageId = viewModel.fullscreenLocationMessageId,
                    let message = sections.flatMap({ $0.rows }).first(where: { $0.message.id == messageId })?.message {
                     if let liveLocation = message.liveLocation {

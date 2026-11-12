@@ -145,11 +145,19 @@ struct InputView: View {
         } else if state == .editing {
             editingButtons
                 .frame(height: 48)
-        } else if audioRecordingMode == .tapToToggle {
+        } else if shouldUseTapToToggleRecording {
             tapToToggleButton
         } else {
             holdToRecordButton
         }
+    }
+
+    private var shouldUseTapToToggleRecording: Bool {
+        #if os(macOS)
+        true
+        #else
+        audioRecordingMode == .tapToToggle
+        #endif
     }
 
     @ViewBuilder

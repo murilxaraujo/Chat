@@ -389,7 +389,7 @@ struct MessageMenu<MainButton: View, ActionEnum: MessageMenuAction>: View {
             lastVerticalOffset = verticalOffset
 
             /// If the messageMenuStyle is a scrollView then we place it in the middle of the screen
-            if case .scrollView(let height) = messageMenuStyle {
+            if case .scrollView = messageMenuStyle {
                 /// Update our max height
                 messageMenuStyle = .scrollView(height: maxEntireHeight)
                 /// And our vertical offset
