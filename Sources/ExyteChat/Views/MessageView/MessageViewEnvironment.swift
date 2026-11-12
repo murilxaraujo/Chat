@@ -4,7 +4,7 @@ private struct ChatMessageTypeEnvironmentKey: EnvironmentKey {
     static let defaultValue: ChatType = .conversation
 }
 
-private struct MessageCustomizationParamsEnvironmentKey: EnvironmentKey {
+private struct MessageCustomizationParamsEnvironmentKey: @MainActor EnvironmentKey {
     @MainActor static let defaultValue = MessageCustomizationParameters()
 }
 
@@ -18,7 +18,7 @@ extension EnvironmentValues {
         set { self[ChatMessageTypeEnvironmentKey.self] = newValue }
     }
 
-    var messageCustomizationParams: MessageCustomizationParameters {
+    @MainActor var messageCustomizationParams: MessageCustomizationParameters {
         get { self[MessageCustomizationParamsEnvironmentKey.self] }
         set { self[MessageCustomizationParamsEnvironmentKey.self] = newValue }
     }

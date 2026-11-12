@@ -120,7 +120,8 @@ struct FullscreenLocationView: View {
 
     private var openInMapsButton: some View {
         Button {
-            let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let mapItem = MKMapItem(location: location, address: nil)
             mapItem.openInMaps()
         } label: {
             Text(localization.openInMapsText)

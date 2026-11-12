@@ -163,15 +163,18 @@ final class InputViewModel: ObservableObject {
     }
 
     private func recordAudio() {
+        let progressHandler: Recorder.ProgressHandler = { [weak self] duration, samples in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.attachments.recording?.duration = duration
+                self.attachments.recording?.waveformSamples = samples
+            }
+        }
+
         Task { @MainActor [recorder] in
             if await recorder.isRecording { return }
             attachments.recording = Recording()
-            let url = await recorder.startRecording { duration, samples in
-                DispatchQueue.main.async { [weak self] in
-                    self?.attachments.recording?.duration = duration
-                    self?.attachments.recording?.waveformSamples = samples
-                }
-            }
+            let url = await recorder.startRecording(durationProgressHandler: progressHandler)
             if state == .waitingForRecordingPermission {
                 state = .isRecordingTap
             }
@@ -185,7 +188,7 @@ private extension InputViewModel {
     func validateDraft() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            guard state != .editing else { return } // special case
+            guard self.state != .editing else { return } // special case
             let hasAttachments = !self.attachments.medias.isEmpty || !self.attachments.documents.isEmpty || self.attachments.staticLocation != nil || self.attachments.liveLocation != nil
             if !self.text.isEmpty || hasAttachments {
                 self.state = .hasTextOrMedia
@@ -210,15 +213,12 @@ private extension InputViewModel {
     }
 
     func subscribeRecordPlayer() {
-        Task { @MainActor in
-            if let recordingPlayer {
-                recordPlayerSubscription = recordingPlayer.didPlayTillEnd
-                    .receive(on: DispatchQueue.main)
-                    .sink { [weak self] in
-                        self?.state = .hasRecording
-                    }
+        guard let recordingPlayer else { return }
+        recordPlayerSubscription = recordingPlayer.didPlayTillEnd
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.state = .hasRecording
             }
-        }
     }
 
     func unsubscribeRecordPlayer() {

@@ -7,6 +7,7 @@ import Combine
 import AVKit
 
 // TODO: Create option "download video before playing"
+@MainActor
 final class VideoViewModel: ObservableObject {
 
     @Published var attachment: Attachment
@@ -30,11 +31,13 @@ final class VideoViewModel: ObservableObject {
                 .assign(to: &$status)
 
             NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
+                forName: AVPlayerItem.didPlayToEndTimeNotification,
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.finishVideo()
+                Task { @MainActor [weak self] in
+                    self?.finishVideo()
+                }
             }
         }
     }

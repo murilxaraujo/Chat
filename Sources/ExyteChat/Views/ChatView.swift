@@ -154,7 +154,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                     globalFocusState.focus = nil
                 }
             }
-            .onChange(of: chatCustomizationParameters.scrollToParams) { scrollToParams in
+            .onChange(of: chatCustomizationParameters.scrollToParams) { _, scrollToParams in
                 self.pendingScrollTo = scrollToParams
             }
     }
@@ -221,8 +221,8 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                         index: index ?? 0
                     ),
                     showShareButton: chatCustomizationParameters.showShareAttachmentButton,
-                    onClose: { [weak viewModel] in
-                        viewModel?.dismissAttachmentFullScreen()
+                    onClose: {
+                        viewModel.dismissAttachmentFullScreen()
                     }
                 )
             }
@@ -233,16 +233,16 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                         FullscreenLocationView(
                             liveLocation: liveLocation,
                             isMyLiveLocation: viewModel.liveLocationBroadcaster.activeShare?.messageId == messageId,
-                            onStopSharing: { [weak viewModel] in
-                                viewModel?.stopLiveLocationSharing()
+                            onStopSharing: {
+                                viewModel.stopLiveLocationSharing()
                             },
-                            onClose: { [weak viewModel] in
-                                viewModel?.dismissFullscreenLocation()
+                            onClose: {
+                                viewModel.dismissFullscreenLocation()
                             }
                         )
                     } else if let location = message.staticLocation {
-                        FullscreenLocationView(staticLocation: location) { [weak viewModel] in
-                            viewModel?.dismissFullscreenLocation()
+                        FullscreenLocationView(staticLocation: location) {
+                            viewModel.dismissFullscreenLocation()
                         }
                     }
                 }
