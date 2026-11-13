@@ -29,7 +29,6 @@ struct InputView: View {
     @State var recordButtonFrame: CGRect = .zero
     @State var lockRecordFrame: CGRect = .zero
     @State var deleteRecordFrame: CGRect = .zero
-    @State var inputBarFrame: CGRect = .zero
 
     @State var dragStart: Date?
     @State var tapDelayTask: Task<Void, Never>?
@@ -44,27 +43,17 @@ struct InputView: View {
     }
 
     var body: some View {
-        VStack {
-            viewOnTop
-                .padding(.top, 6)
-                .transition(.move(edge: .bottom))
-
-            HStack(alignment: .bottom, spacing: 10) {
-                HStack(alignment: .bottom, spacing: 0) {
-                    leftView
-                    middleView
-                    rightView
-                }
-                .background {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(.regularMaterial)
-                }
-                .frameGetter($inputBarFrame)
-
-                rightOutsideButton
-            }
-            .padding(MessageView.horizontalScreenEdgePadding, 8)
-        }
+        ChatInputBar(
+            accessory: {
+                viewOnTop
+                    .padding(.top, 6)
+                    .transition(.move(edge: .bottom))
+            },
+            leading: { leftView },
+            content: { middleView },
+            trailing: { rightView },
+            action: { rightOutsideButton }
+        )
         .onAppear {
             viewModel.recordingPlayer = recordingPlayer
         }
@@ -88,15 +77,23 @@ struct InputView: View {
     @ViewBuilder
     var leftView: some View {
         if [.isRecordingTap, .isRecordingHold, .hasRecording, .playingRecording, .pausedRecording].contains(state) {
-            deleteRecordButton
+            leadingActionStyle(deleteRecordButton)
         } else {
             switch style {
             case .message:
-                leftButton
+                leadingActionStyle(leftButton)
             case .signature:
-                addButton
+                leadingActionStyle(addButton)
             }
         }
+    }
+
+    func leadingActionStyle<Content: View>(_ content: Content) -> some View {
+        content
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .frame(width: 48, height: 48)
     }
 
     @ViewBuilder
@@ -153,14 +150,12 @@ struct InputView: View {
         } else if state == .editing {
             editingButtons
                 .frame(height: 48)
-        } else if shouldUseTapToToggleRecording {
-            tapToToggleButton
         } else {
-            holdToRecordButton
+            recordingActionButton
         }
     }
 
-    private var shouldUseTapToToggleRecording: Bool {
+    var shouldUseTapToToggleRecording: Bool {
         #if os(macOS)
         true
         #else
@@ -171,39 +166,28 @@ struct InputView: View {
     @ViewBuilder
     var editingButtons: some View {
         HStack {
-            Button {
+            Button(role: .cancel) {
                 onAction(.cancelEdit)
             } label: {
                 Image(systemName: "xmark")
-                    .foregroundStyle(.white)
                     .fontWeight(.bold)
-                    .padding(5)
-                    .background(Circle().foregroundStyle(.red))
             }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.circle)
+            .controlSize(.small)
+            .accessibilityLabel("Cancel editing")
 
             Button {
                 onAction(.saveEdit)
             } label: {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(.white)
                     .fontWeight(.bold)
-                    .padding(5)
-                    .background(Circle().foregroundStyle(.green))
             }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.circle)
+            .controlSize(.small)
+            .accessibilityLabel("Save edited message")
         }
-    }
-
-    var sendButton: some View {
-        Button {
-            onAction(.send)
-        } label: {
-            Image(systemName: "paperplane.fill")
-                .font(.system(size: 18, weight: .semibold))
-        }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .frame(width: 48, height: 48)
     }
 
     var addButton: some View {

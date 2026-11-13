@@ -50,11 +50,16 @@ public enum InputViewState: Sendable {
 
     case editing
 
-    var canSend: Bool {
+    public var canSend: Bool {
         switch self {
         case .hasTextOrMedia, .hasRecording, .isRecordingTap, .playingRecording, .pausedRecording: return true
         default: return false
         }
+    }
+
+    /// Whether the input is capturing a new recording.
+    public var isRecording: Bool {
+        self == .isRecordingHold || self == .isRecordingTap
     }
 }
 
@@ -70,10 +75,26 @@ public enum AvailableInputType: Sendable {
 }
 
 public struct InputViewAttachments {
-    var medias: [DraftMedia] = []
-    var documents: [DocumentItem] = []
-    var staticLocation: StaticLocation?
-    var liveLocation: LiveLocation?
-    var recording: Recording?
-    var replyMessage: ReplyMessage?
+    public var medias: [DraftMedia]
+    public var documents: [DocumentItem]
+    public var staticLocation: StaticLocation?
+    public var liveLocation: LiveLocation?
+    public var recording: Recording?
+    public var replyMessage: ReplyMessage?
+
+    public init(
+        medias: [DraftMedia] = [],
+        documents: [DocumentItem] = [],
+        staticLocation: StaticLocation? = nil,
+        liveLocation: LiveLocation? = nil,
+        recording: Recording? = nil,
+        replyMessage: ReplyMessage? = nil
+    ) {
+        self.medias = medias
+        self.documents = documents
+        self.staticLocation = staticLocation
+        self.liveLocation = liveLocation
+        self.recording = recording
+        self.replyMessage = replyMessage
+    }
 }

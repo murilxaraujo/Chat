@@ -8,9 +8,31 @@ import SwiftUI
 private let tapDelay: Double = 0.2
 private let stopRecordButtonOffset: CGFloat = 24
 
+private enum RecordingActionButton: Equatable {
+    case send
+    case record
+    case stop
+
+    var symbol: String {
+        switch self {
+        case .send: "paperplane.fill"
+        case .record: "mic.fill"
+        case .stop: "stop.fill"
+        }
+    }
+
+    var accessibilityLabel: LocalizedStringKey {
+        switch self {
+        case .send: "Send"
+        case .record: "Record audio"
+        case .stop: "Stop recording"
+        }
+    }
+}
+
 extension InputView {
 
-    var holdToRecordButton: some View {
+    var recordingActionButton: some View {
         ZStack {
             if [.isRecordingTap, .isRecordingHold].contains(state) {
                 RecordIndicator()
@@ -18,86 +40,90 @@ extension InputView {
                     .foregroundStyle(.tint)
             }
 
-            Group {
-                if state.canSend || !isAudioAvailable() {
-                    sendButton
-                        .disabled(!state.canSend)
-                } else {
-                    recordButton
-                        .highPriorityGesture(dragGesture())
-                }
-            }
-            .compositingGroup()
-            .overlay(alignment: .top) {
-                if state == .isRecordingTap {
-                    stopRecordButton
-                        .sizeGetter($stopRecordButtonSize)
-                        .offset(y: -stopRecordButtonSize.height - stopRecordButtonOffset)
-                } else if state == .isRecordingHold {
-                    lockRecordButton
-                        .sizeGetter($lockRecordButtonSize)
-                        .offset(y: -lockRecordButtonSize.height - stopRecordButtonOffset)
-                }
-            }
-        }
-        .viewSize(48)
-    }
-
-    var tapToToggleButton: some View {
-        ZStack {
-            if state == .isRecordingTap {
-                RecordIndicator()
-                    .viewSize(80)
-                    .foregroundStyle(.tint)
-            }
-
-            if state == .isRecordingTap {
-                stopRecordButton
-            } else if state.canSend || !isAudioAvailable() {
-                sendButton
-                    .disabled(!state.canSend)
-            } else {
-                recordButton
-                    .onTapGesture {
-                        onAction(.recordAudioTap)
+            primaryActionButton
+                .compositingGroup()
+                .overlay(alignment: .top) {
+                    if !shouldUseTapToToggleRecording, state == .isRecordingTap {
+                        stopRecordButton
+                            .sizeGetter($stopRecordButtonSize)
+                            .offset(y: -stopRecordButtonSize.height - stopRecordButtonOffset)
+                    } else if !shouldUseTapToToggleRecording, state == .isRecordingHold {
+                        lockRecordButton
+                            .sizeGetter($lockRecordButtonSize)
+                            .offset(y: -lockRecordButtonSize.height - stopRecordButtonOffset)
                     }
-            }
+                }
         }
-        .viewSize(48)
+        .frame(width: 48, height: 48)
     }
 
-    var recordButton: some View {
-        Image(systemName: "mic.fill")
-            .font(.system(size: 20, weight: .medium))
-            .frame(width: 48, height: 48)
-            .foregroundStyle(.white)
-            .background(.tint, in: Circle())
-            .frameGetter($recordButtonFrame)
+    private var currentRecordingAction: RecordingActionButton {
+        if shouldUseTapToToggleRecording, state == .isRecordingTap {
+            return .stop
+        }
+        if state.canSend || !isAudioAvailable() {
+            return .send
+        }
+        return .record
+    }
+
+    @ViewBuilder
+    private var primaryActionButton: some View {
+        let button = actionButton(for: currentRecordingAction)
+
+        if currentRecordingAction == .record, !shouldUseTapToToggleRecording {
+            button
+                .highPriorityGesture(dragGesture())
+                .accessibilityAction(.default) {
+                    onAction(.recordAudioTap)
+                }
+                .frameGetter($recordButtonFrame)
+        } else {
+            button
+                .frameGetter($recordButtonFrame)
+        }
+    }
+
+    private func actionButton(for action: RecordingActionButton) -> some View {
+        Button {
+            switch action {
+            case .send:
+                onAction(.send)
+            case .record:
+                if shouldUseTapToToggleRecording {
+                    onAction(.recordAudioTap)
+                }
+            case .stop:
+                onAction(.stopRecordAudio)
+            }
+        } label: {
+            Image(systemName: action.symbol)
+                .frame(width: 32, height: 32)
+        }
+        .accessibilityLabel(Text(action.accessibilityLabel))
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
+        .frame(width: 48, height: 48)
+        .disabled(action == .send && !state.canSend)
     }
 
     var deleteRecordButton: some View {
-        Button {
+        Button(role: .destructive) {
             onAction(.deleteRecord)
         } label: {
             Image(systemName: "trash")
-                .viewSize(24)
-                .padding(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 8))
         }
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
+        .accessibilityLabel("Delete recording")
         .frameGetter($deleteRecordFrame)
     }
 
     var stopRecordButton: some View {
-        Button {
-            onAction(.stopRecordAudio)
-        } label: {
-            Image(systemName: "stop.fill")
-                .viewSize(28)
-                .background(
-                    Capsule()
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.4), radius: 1)
-                )
-        }
+        actionButton(for: .stop)
+            .accessibilityLabel("Stop recording")
     }
 
     var lockRecordButton: some View {
@@ -231,6 +257,10 @@ extension InputView {
                         } catch {
                             return
                         }
+                        guard !Task.isCancelled,
+                              state != .isRecordingTap,
+                              state != .waitingForRecordingPermission else { return }
+                        onAction(.recordAudioHold)
                     }
                 }
 
@@ -247,8 +277,9 @@ extension InputView {
                 }
             }
             .onEnded { value in
+                tapDelayTask?.cancel()
+                tapDelayTask = nil
                 if !cancelGesture {
-                    tapDelayTimer = nil
                     if recordButtonFrame.contains(value.location) {
                         if let dragStart = dragStart, Date().timeIntervalSince(dragStart) < tapDelay {
                             onAction(.recordAudioTap)
@@ -267,5 +298,3 @@ extension InputView {
             }
     }
 }
-                tapDelayTask?.cancel()
-                tapDelayTask = nil

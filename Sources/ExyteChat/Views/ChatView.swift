@@ -87,7 +87,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     @State private var photosToImport: [PhotosPickerItem] = []
     @State private var isScrolledToBottom: Bool = true
 
-    @State private var cellFrames = [String: CGRect]()
     /// Used to prevent the MainView from responding to keyboard changes while the Menu is active
     @State private var isShowingMenu = false
 
@@ -125,6 +124,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
             .environment(\.chatSize, chatSize)
             .environment(\.chatLocalization, chatCustomizationParameters.localization)
             .environment(\.chatSafeAreaInsets, geometry.safeAreaInsets)
+            .environmentObject(keyboardState)
             .environment(globalFocusState)
             .task {
                 await networkMonitor.monitorConnectivity()
@@ -139,7 +139,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 guard !Task.isCancelled else { return }
                 pendingScrollTo = ScrollToParams(.newestMessage)
             }
-            .environmentObject(keyboardState)
         }
     }
 
@@ -181,6 +180,7 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 maxSelectionCount: inputViewCustomizationParameters.photoPickerSelectionLimit,
                 selectionBehavior: .ordered,
                 matching: .any(of: [.images, .videos])
+            )
             .task(id: photoImportRequestID) {
                 let requestID = photoImportRequestID
                 let selectedItems = photosToImport
@@ -189,7 +189,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 guard !Task.isCancelled, requestID == photoImportRequestID else { return }
                 photosToImport = []
             }
-            )
             .onChange(of: inputViewModel.showPhotoPicker) { _, isPresented in
                 guard !isPresented else { return }
                 photosToImport = inputViewModel.selectedPhotoItems
@@ -396,8 +395,12 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
                 InputViewBuilderParameters(
                     text: $inputViewModel.text,
                     attachments: inputViewModel.attachments,
+                    attachmentsBinding: $inputViewModel.attachments,
                     inputViewState: inputViewModel.state,
                     inputViewStyle: .message,
+                    availableInputs: inputViewCustomizationParameters.availableInputs,
+                    audioRecordingMode: inputViewCustomizationParameters.audioRecordingMode,
+                    localization: chatCustomizationParameters.localization,
                     inputViewActionClosure: inputViewModel.inputViewAction()
                 ) {
                     globalFocusState.focus = nil
@@ -423,8 +426,6 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     }
     
     func messageMenu(_ row: MessageRow) -> some View {
-        let cellFrame = cellFrames[row.id] ?? .zero
-
         return MessageMenu(
             viewModel: viewModel,
             isShowingMenu: $isShowingMenu,
@@ -491,8 +492,8 @@ public struct ChatView<MessageContent: View, InputViewContent: View, MenuAction:
     func hideMessageMenu() {
         viewModel.messageMenuRow = nil
         viewModel.messageFrame = .zero
-        isShowingMenu = false
         viewModel.messageCellFrame = .zero
+        isShowingMenu = false
     }
     
 }

@@ -31,15 +31,23 @@ public struct MessageBuilderParameters {
 
 /// To build a custom input view use the following parameters passed by builder closure:
 /// - binding to the text in input view
-/// - InputViewAttachments to store the attachments from external pickers
-/// - current input view state: .message for the chat composer or .signature for a signature-style input
+/// - current attachments and a binding for editing them from a custom composer
+/// - available input types, localization, and current composer state
 /// - closure to pass user interaction, .recordAudioTap for example
 /// - dismiss keyboard closure
+///
+/// Use `ChatInputBar` to compose a custom input from standard SwiftUI controls while
+/// keeping its accessory, leading, editor, trailing, and primary-action regions.
+/// Return any SwiftUI view to replace the complete input.
 public struct InputViewBuilderParameters {
     public let text: Binding<String>
     public let attachments: InputViewAttachments
+    public let attachmentsBinding: Binding<InputViewAttachments>
     public let inputViewState: InputViewState
     public let inputViewStyle: InputViewStyle
+    public let availableInputs: [AvailableInputType]
+    public let audioRecordingMode: AudioRecordingMode
+    public let localization: ChatLocalization
     public let inputViewActionClosure: (InputViewAction) -> Void
     public let dismissKeyboardClosure: ()->()
 }
